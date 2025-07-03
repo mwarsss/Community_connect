@@ -31,20 +31,22 @@
   </head>
   <body>
     <h1>Post an Opportunity</h1>
-    <form method="POST">
-      <label>Title:</label><br />
-      <input type="text" name="title" required /><br />
+    <form method="post">
+      <input name="title" placeholder="Title" required /><br />
 
-      <label>Description:</label><br />
-      <textarea name="description" required></textarea><br />
+      <textarea name="description" placeholder="Description" required></textarea
+      ><br />
 
-      <label>Category:</label><br />
-      <input type="text" name="category" required /><br />
+      <select name="category" required>
+        <option value="" disabled selected>Select a category</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}">{{ cat }}</option>
+        {% endfor %}</select
+      ><br />
 
-      <label>Location:</label><br />
-      <input type="text" name="location" required /><br />
+      <input name="location" placeholder="Location" required /><br />
 
-      <button type="submit">Post</button>
+      <button type="submit">Submit</button>
     </form>
 
     <a href="/">← Back to Home</a>
