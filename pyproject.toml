@@ -1,0 +1,2 @@
+[tool.isort]
+skip = ["app/__init__.py"]
