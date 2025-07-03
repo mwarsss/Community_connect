@@ -1,5 +1,7 @@
 from flask import render_template, request, redirect, url_for
 from .models import add_opportunity, get_opportunities
+CATEGORIES = ["Education", "Health", "Environment",
+              "Technology", "Community Service"]
 
 
 def register_routes(app):
@@ -18,4 +20,4 @@ def register_routes(app):
             location = request.form["location"]
             add_opportunity(title, description, category, location)
             return redirect(url_for("home"))
-        return render_template("new.html")
+        return render_template("new.html", categories=CATEGORIES)
