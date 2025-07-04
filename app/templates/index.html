@@ -10,8 +10,14 @@
         type="text"
         name="q"
         placeholder="Search by title/category"
-        value="{{ query }}"
+        value="{{ request.args.get('q', '') }}"
       />
+      <select name="category">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+          <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
       <button type="submit">Search</button>
     </form>
 
@@ -28,5 +34,15 @@
       <li>No opportunities found.</li>
       {% endfor %}
     </ul>
+
+    {% with messages = get_flashed_messages(with_categories=True) %}
+      {% if messages %}
+        <ul>
+        {% for category, msg in messages %}
+          <li style="color: {% if category == 'error' %}red{% else %}green{% endif %};">{{ msg }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
   </body>
 </html>
