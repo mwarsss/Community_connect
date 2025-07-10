@@ -1,3 +1,5 @@
+from flask import flash
+from flask import render_template, request, redirect, url_for
 from flask import render_template, request, redirect, url_for, flash
 from app.models import get_opportunities
 from .models import add_opportunity, get_opportunities
@@ -18,11 +20,18 @@ def register_routes(app):
     @app.route("/new", methods=["GET", "POST"])
     def new_opportunity():
         if request.method == "POST":
-            title = request.form["title"]
-            description = request.form["description"]
-            category = request.form["category"]
-            location = request.form["location"]
+            title = request.form.get("title", "").strip()
+            description = request.form.get("description", "").strip()
+            category = request.form.get("category", "").strip()
+            location = request.form.get("location", "").strip()
 
+            if not title or not description or not category or not location:
+                flash("All fields are required.", "error")
+                return redirect("/new")
+
+            new_opp = Opportunity(
+                title
+            )
             if not title or not description or not category or not location:
                 flash("All fields are required!", "error")
                 return redirect("/new")
