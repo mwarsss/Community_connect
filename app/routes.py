@@ -1,53 +1,70 @@
-from flask import flash
-from flask import render_template, request, redirect, url_for
-from flask import render_template, request, redirect, url_for, flash
-from app.models import get_opportunities
-from .models import add_opportunity, get_opportunities
-CATEGORIES = ["Education", "Health", "Environment",
-              "Technology", "Community Service"]
+from flask import render_template, request, redirect, flash, url_for, Blueprint
+from app import db
+from app.models import Opportunity
+
+# Category options (centralized list)
+CATEGORIES = ["Education", "Climate", "Health", "Youth", "Technology"]
+
+# ---------- Home Route with Search + Filter + Pagination ----------
+
+main = Blueprint("main", __name__)
 
 
-def register_routes(app):
-    @app.route("/")
-    def index():
-        query = request.args.get("q", "")
-        selected_category = request.args.get("category", "")
+@main.route("/")
+def index():
+    query = request.args.get("q", "")
+    selected_category = request.args.get("category", "")
+    page = request.args.get("page", 1, type=int)
 
-        results = get_opportunities(query=query, category=selected_category)
+    results_query = Opportunity.query
 
-        return render_template("index.html", opportunities=results, query=query, selected_category=selected_category, categories=CATEGORIES)
+    if query:
+        results_query = results_query.filter(
+            (Opportunity.title.ilike(f"%{query}%")) |  # type: ignore
+            (Opportunity.category.ilike(f"%{query}%"))  # type: ignore
+        )
 
-    @app.route("/new", methods=["GET", "POST"])
-    def new_opportunity():
-        if request.method == "POST":
-            title = request.form.get("title", "").strip()
-            description = request.form.get("description", "").strip()
-            category = request.form.get("category", "").strip()
-            location = request.form.get("location", "").strip()
+    if selected_category:
+        results_query = results_query.filter_by(category=selected_category)
 
-            if not title or not description or not category or not location:
-                flash("All fields are required.", "error")
-                return redirect("/new")
+    paginated = results_query.order_by(
+        Opportunity.id.desc()).paginate(page=page, per_page=5)
 
-            new_opp = Opportunity(
-                title
-            )
-            if not title or not description or not category or not location:
-                flash("All fields are required!", "error")
-                return redirect("/new")
+    return render_template(
+        "index.html",
+        opportunities=paginated.items,
+        pagination=paginated,
+        query=query,
+        selected_category=selected_category,
+        categories=CATEGORIES
+    )
 
-                new_opportunity = Opportunity(
-                    title=title,
-                    description=description,
-                    category=category,
-                    location=location
-                )
-                db.session.add(new_opp)
-                db.session.commit()
-                flash("Opportunity added successfully!", "success")
-                return redirect("/")
+# ---------- Form for Submitting a New Opportunity ----------
 
-            add_opportunity(title, description, category, location)
-            return redirect(url_for("home"))
 
-        return render_template("new.html", categories=CATEGORIES)
+@main.route('/new', methods=["GET", "POST"])
+def new_opportunity():
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+        category = request.form.get("category", "").strip()
+        location = request.form.get("location", "").strip()
+
+        # Basic validation
+        if not title or not description or not category or not location:
+            flash("All fields are required.", "error")
+            return redirect("/new")
+
+        new_opp = Opportunity(
+            title=title,
+            description=description,
+            category=category,
+            location=location
+        )
+
+        db.session.add(new_opp)
+        db.session.commit()
+        flash("Opportunity posted successfully!", "success")
+        return redirect("/")
+
+    return render_template("new.html", categories=CATEGORIES)
