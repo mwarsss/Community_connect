@@ -22,8 +22,6 @@
     </form>
 
     <a href="/new">+ Post New Opportunity</a>
-
-    <ul>
       {% for opp in opportunities %}
       <li>
         <strong>{{ opp.title }}</strong> ({{ opp.category }})<br />
@@ -39,9 +37,24 @@
       {% if messages %}
         <ul>
         {% for category, msg in messages %}
-          <li style="color: {% if category == 'error' %}red{% else %}green{% endif %};">{{ msg }}</li>
+          {% if category == 'error' %}
+            <li style="color: red;">{{ msg }}</li>
+          {% elif category == 'success' %}
+            <li style="color: green;">{{ msg }}</li>
+          {% else %}
+            <li>{{ msg }}</li>
+          {% endif %}
         {% endfor %}
         </ul>
+        <div style="margin-top: 20px;">
+          {% if pagination.pages > 1 %}
+          <div>
+            { % if pagination.has_prev %}
+            <a href="{{ url_for('index', page=pagination.next_num, q=query, category=selected_category )}}">Next -></a>
+          {% endif%}
+          </div>
+        </div>">
+        <ul>
       {% endif %}
     {% endwith %}
   </body>
