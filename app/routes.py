@@ -1,5 +1,10 @@
 from flask import render_template, request, redirect, flash, url_for, Blueprint
-from app import db
+from app import db, create_app
+from app.models import User, Opportunity
+from flask_login import login_user, logout_user, current_user, login_required
+from werkzeug.security import check_password_hash
+from app.models import User, Opportunity
+from app.models import get_db
 from app.models import Opportunity
 
 # Category options (centralized list)
@@ -68,3 +73,66 @@ def new_opportunity():
         return redirect("/")
 
     return render_template("new.html", categories=CATEGORIES)
+
+
+@main.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+
+        # Basic validation
+        if not username or not email or not password:
+            flash("All fields are required.", "error")
+            return redirect("/register")
+
+        # Check if user already exists
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash("Email is already registered.", "error")
+            return redirect("/register")
+
+        new_user = User(
+            username=username,
+            email=email
+        )
+        new_user.set_password(password)
+
+        db.session.add(new_user)
+        db.session.commit()
+        flash("Registration successful! You can now log in.", "success")
+        return redirect("/login")
+
+    return render_template("register.html")
+
+
+@main.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+
+        # Basic validation
+        if not email or not password:
+            flash("Email and password are required.", "error")
+            return redirect("/login")
+
+        user = User.query.filter_by(email=email).first()
+        if user and user.check_password(password):
+            login_user(user)
+            flash("Login successful!", "success")
+            return redirect("/")
+        else:
+            flash("Invalid email or password.", "error")
+            return redirect("/login")
+
+    return render_template("login.html")
+
+
+@main.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash("You have been logged out.", "success")
+    return redirect("/")
