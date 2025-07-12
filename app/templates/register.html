@@ -1,0 +1,27 @@
+<h2>Register</h2>
+<form method="post">
+  <input name="username" placeholder="Username" required /><br />
+  <input type="email" name="email" placeholder="Email" required /><br />
+  <input
+    type="password"
+    name="password"
+    placeholder="Password"
+    required
+  /><br />
+  <button type="submit">Register</button>
+</form>
+{% if error %}
+<p style="color: red">{{ error }}</p>
+{% endif %} {% if success %}
+<p style="color: green">{{ success }}</p>
+{% endif %}
+<a href="{{ url_for('main.login') }}">Already have an account? Login</a>
+
+{% if current_app.config['DEBUG'] %} {# Use current_app instead of app #}
+<p>Note: This is a **DEBUG** mode message.</p>
+{% else %}
+<p>
+  Note: This is a development-only feature. In production, use a secure
+  registration process.
+</p>
+{% endif %}

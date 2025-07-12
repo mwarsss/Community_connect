@@ -1,10 +1,14 @@
 from app import db
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+from app import login
 
 
 def get_db():
     from app import db  # ✅ local import to avoid circular import
     return db
 
+#
 
 # Define model at top to avoid circular use
 
@@ -44,3 +48,25 @@ def get_opportunities(query=None):
         (Opportunity.title.ilike(query)) |  # type: ignore
         (Opportunity.category.ilike(query))  # type: ignore
     ).all()
+
+
+# Creation of the user model
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    # Correct spelling here
+    password_hash = db.Column(db.String(128), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(
+            password)  # Corrected typo here!
+
+    def check_password(self, password):
+        # Corrected typo here!
+        return check_password_hash(self.password_hash, password)
+
+
+@login.user_loader
+def load_user(id):
+    return User.query.get(int(id))
