@@ -6,6 +6,7 @@ from werkzeug.security import check_password_hash
 from app.models import User, Opportunity
 from app.models import get_db
 from app.models import Opportunity
+from app.utils import role_required
 
 # Category options (centralized list)
 CATEGORIES = ["Education", "Climate", "Health", "Youth", "Technology"]
@@ -97,7 +98,8 @@ def register():
 
         new_user = User(
             username=username,
-            email=email
+            email=email,
+            role="moderator"
         )
         new_user.set_password(password)
 
@@ -156,3 +158,11 @@ def logout():
     logout_user()
     flash("You have been logged out.", "success")
     return redirect("/")
+
+
+@main.route("/admin/dashboard")
+@login_required
+@role_required("admin", "moderator")
+def admin_dashboard():
+    # Only accessible by users with the 'admin' or 'moderator' role
+    return render_template("admin/dashboard.html")
