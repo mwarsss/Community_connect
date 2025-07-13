@@ -9,3 +9,20 @@
   /><br />
   <button type="submit">Login</button>
 </form>
+
+{# Display flash messages if any #} {% with messages =
+get_flashed_messages(with_categories=true) %} {% if messages %}
+<ul class="flashes">
+  {% for category, message in messages %}
+  <li class="{{ category }}">{{ message }}</li>
+  {% endfor %}
+</ul>
+{% endif %} {% endwith %} {# Add a link to register #}
+<a href="{{ url_for('main.register') }}">Don't have an account? Register</a>
+
+{# Debug/Development messages #} {% if debug_mode %} {# Use the passed variable
+here #}
+<p>Note: This is a **DEBUG** mode message for login.</p>
+{% else %}
+<p>Note: This is a development-only message for login.</p>
+{% endif %}
