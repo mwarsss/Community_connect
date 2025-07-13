@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, flash, url_for, Blueprint
+from flask import render_template, request, redirect, flash, url_for, Blueprint, current_app
 from app import db, create_app
 from app.models import User, Opportunity
 from flask_login import login_user, logout_user, current_user, login_required
@@ -85,13 +85,15 @@ def register():
         # Basic validation
         if not username or not email or not password:
             flash("All fields are required.", "error")
-            return redirect("/register")
+            # Pass debug_mode in case of error too
+            return render_template("register.html", debug_mode=current_app.config['DEBUG'])
 
         # Check if user already exists
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
             flash("Email is already registered.", "error")
-            return redirect("/register")
+            # Pass debug_mode in case of existing user too
+            return render_template("register.html", debug_mode=current_app.config['DEBUG'])
 
         new_user = User(
             username=username,
@@ -104,30 +106,48 @@ def register():
         flash("Registration successful! You can now log in.", "success")
         return redirect("/login")
 
-    return render_template("register.html")
+    # Pass the debug status to the template when rendering GET request
+    return render_template("register.html", debug_mode=current_app.config['DEBUG'])
 
 
 @main.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form.get("email", "").strip()
+        # 1. Get data from the form.
+        # Your form uses 'username', so retrieve that instead of 'email'.
+        # Ensure you import 'request' from Flask if not already done.
+        username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
 
-        # Basic validation
-        if not email or not password:
-            flash("Email and password are required.", "error")
-            return redirect("/login")
+        # 2. Basic validation for empty fields.
+        if not username or not password:
+            flash("Username and password are required.", "error")
+            # If there's an error, re-render the login page, passing debug_mode
+            return render_template("login.html", debug_mode=current_app.config['DEBUG'])
 
-        user = User.query.filter_by(email=email).first()
+        # 3. Query the User model using the 'username' from the form.
+        # Make sure your User model has a 'username' column and it's unique.
+        user = User.query.filter_by(username=username).first()
+
+        # 4. Check if the user exists and the password is correct.
         if user and user.check_password(password):
+            # 5. Log the user in using Flask-Login's login_user function.
             login_user(user)
             flash("Login successful!", "success")
-            return redirect("/")
-        else:
-            flash("Invalid email or password.", "error")
-            return redirect("/login")
 
-    return render_template("login.html")
+            # 6. Redirect to the home route ('/').
+            # url_for('main.index') generates the URL for the 'index' function
+            # defined in your 'main' blueprint, which corresponds to '/'.
+            return redirect(url_for('main.index'))
+        else:
+            # 7. Handle invalid credentials.
+            flash("Invalid username or password.", "error")
+            # If login fails, re-render the login page, passing debug_mode
+            return render_template("login.html", debug_mode=current_app.config['DEBUG'])
+
+    # For GET requests, just render the login form.
+    # Pass debug_mode to the template as well.
+    return render_template("login.html", debug_mode=current_app.config['DEBUG'])
 
 
 @main.route("/logout")

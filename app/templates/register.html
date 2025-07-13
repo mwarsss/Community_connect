@@ -17,7 +17,7 @@
 {% endif %}
 <a href="{{ url_for('main.login') }}">Already have an account? Login</a>
 
-{% if current_app.config['DEBUG'] %} {# Use current_app instead of app #}
+{% if debug_mode %} {# Use the passed variable here #}
 <p>Note: This is a **DEBUG** mode message.</p>
 {% else %}
 <p>
