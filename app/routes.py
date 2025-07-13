@@ -3,7 +3,7 @@ from app import db, create_app
 from app.models import User, Opportunity
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.security import check_password_hash
-from app.models import User, Opportunity
+from app.models import User, Opportunity, db
 from app.models import get_db
 from app.models import Opportunity
 from app.utils import role_required
@@ -14,6 +14,8 @@ CATEGORIES = ["Education", "Climate", "Health", "Youth", "Technology"]
 # ---------- Home Route with Search + Filter + Pagination ----------
 
 main = Blueprint("main", __name__)
+
+moderator_bp = Blueprint('moderator', __name__)
 
 
 @main.route("/")
@@ -166,3 +168,47 @@ def logout():
 def admin_dashboard():
     # Only accessible by users with the 'admin' or 'moderator' role
     return render_template("admin/dashboard.html")
+
+
+def is_moderator():
+    return current_user.is_authenticated and current_user.role['admin', 'moderator']
+
+
+@moderator_bp.route("/moderate/opportunites")
+@login_required
+def moderator_dashboard():
+    if not is_moderator():
+        flash("Access denied", "danger")
+        return redirect(url_for("main.index"))
+
+    opportunities = Opportunity.query.filter_by(is_approved=False).all
+    return render_template('moderate_opportunities.html', opportunities=opportunities)
+
+
+@moderator_bp.route('/moderate/approve/<int:id>')
+@login_required
+def approve_opportunity(id):
+    if not is_moderator():
+        flash("Access denied", "danger")
+        return redirect(url_for('main.index'))
+
+    opp = Opportunity.query.get_or_404(id)
+    opp.is_approved = True
+    opp.approved_by = current_user.username
+    db.session.commit()
+    flash("Opportunity approved.", "success")
+    return redirect(url_for('moderator.moderate_opportunities'))
+
+
+@moderator_bp.route('/moderate/reject/<int:id>')
+@login_required
+def reject_opportunity(id):
+    if not is_moderator():
+        flash("Access denied", "danger")
+        return redirect(url_for('main.index'))
+
+    opp = Opportunity.query.get_or_404(id)
+    db.session.delete(opp)
+    db.session.commit()
+    flash("Opportunity rejected.", "warning")
+    return redirect(url_for('moderator.moderate_opportunities'))

@@ -1,0 +1,17 @@
+<h2>Moderate Opportunities</h2>
+
+{% for opp in opportunities %}
+<div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px">
+  <h4>{{ opp.title }}</h4>
+  <p>{{ opp.description }}</p>
+  <a href="{{ url_for('moderator.approve_opportunity', id=opp.id) }}"
+    >✅ Approve</a
+  >
+  |
+  <a href="{{ url_for('moderator.reject_opportunity', id=opp.id) }}"
+    >❌ Reject</a
+  >
+</div>
+{% else %}
+<p>No pending opportunities.</p>
+{% endfor %}
