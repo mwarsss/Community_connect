@@ -2,6 +2,7 @@ from app import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import login
+from datetime import datetime
 
 
 def get_db():
@@ -19,6 +20,9 @@ class Opportunity(db.Model):
     description = db.Column(db.Text, nullable=False)
     category = db.Column(db.String(50), nullable=False)
     location = db.Column(db.String(100), nullable=False)
+    is_approved = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    approved_by = db.Column(db.String(120), nullable=True)
 
     def __init__(self, title, description, category, location) -> None:
         self.title = title
