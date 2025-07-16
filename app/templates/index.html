@@ -17,6 +17,9 @@
       {% else %}
       <a href="/login">Login</a> | <a href="/register">Register</a>
       {% endif %}
+      {% if current_user.is_authenticated %}
+         <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+        {% endif %}
 
       <select name="category">
         <option value="">All Categories</option>
@@ -63,5 +66,9 @@
         <ul>
       {% endif %}
     {% endwith %}
+    {% if current_user.is_authenticated and current_user.role in ['admin', 'moderator'] %}
+  <li><a href="{{ url_for('moderator.moderate_opportunities') }}">Moderate</a></li>
+{% endif %}
+
   </body>
 </html>
