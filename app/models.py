@@ -1,77 +1,117 @@
-from app import db
-from flask_login import UserMixin
+# app/models.py
+from app import login  # Import the login manager instance
+from app import db  # Correct way to import the SQLAlchemy instance
+# Import LoginManager to decorate load_user
+from flask_login import UserMixin, LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
-from app import login
-from datetime import datetime
+from datetime import datetime  # Import datetime for timestamps
 
 
-def get_db():
-    from app import db  # ✅ local import to avoid circular import
-    return db
+# Initialize LoginManager here if not done in __init__.py,
+# but it's usually initialized in __init__.py and imported there for app.login.init_app(app)
+# If login is already initialized in app/__init__.py, you might just need:
+# from app import login # if you use @login.user_loader directly.
 
-#
+# It's good practice to define the User model first if other models (like Opportunity)
+# have a foreign key relationship to it.
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    # Ensure nullable=False for consistency
+    role = db.Column(db.String(50), default='user', nullable=False)
 
-# Define model at top to avoid circular use
+    # Define a custom __init__ for clarity
+    def __init__(self, username, email, role='user'):
+        self.username = username
+        self.email = email
+        self.role = role
+
+    # These methods must be INSIDE the User class
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f"<User {self.username}>"
 
 
+# Define model for Opportunity
 class Opportunity(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
     category = db.Column(db.String(50), nullable=False)
     location = db.Column(db.String(100), nullable=False)
-    is_approved = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Ensure nullable=False for consistency
+    is_approved = db.Column(db.Boolean, default=False, nullable=False)
+    # Use datetime.utcnow, ensure nullable=False
+    created_at = db.Column(
+        db.DateTime, default=datetime.utcnow, nullable=False)
     approved_by = db.Column(db.String(120), nullable=True)
 
-    def __init__(self, title, description, category, location) -> None:
+    # Add the foreign key to link to the User model
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    # Define a relationship to the User model (optional, but very useful)
+    user = db.relationship(
+        'User', backref=db.backref('opportunities', lazy=True))
+
+    def __init__(self, title, description, category, location, user_id, is_approved=False, approved_by=None):
         self.title = title
         self.description = description
         self.category = category
         self.location = location
+        self.user_id = user_id
+        self.is_approved = is_approved  # Initialize these fields
+        self.approved_by = approved_by  # Initialize these fields
+
+    def __repr__(self):
+        return f"<Opportunity {self.title}>"
 
 
-def add_opportunity(title, description, category, location):
-    db = get_db()
+# This part is crucial for Flask-Login.
+# Ensure 'login' (LoginManager instance) is available for this decorator.
+# If 'login' is created in __init__.py, you'll need to import it here.
+# Assuming 'login' is initialized in app/__init__.py and exported.
+
+
+@login.user_loader
+def load_user(id):
+    return User.query.get(int(id))
+
+# --- Functions (if still needed, though often integrated into routes/views) ---
+
+# These functions are often better handled directly in your routes.py
+# or by creating a dedicated service layer/repository pattern.
+# If you keep them, make sure they don't cause new circular imports.
+# I'll keep them as you provided them, but note they directly use 'db'
+# which is globally available from 'from app import db'.
+
+
+def add_opportunity(title, description, category, location, user_id, is_approved=False):
+    # No need for get_db()
     opp = Opportunity(
         title=title,
         description=description,
         category=category,
-        location=location
+        location=location,
+        user_id=user_id,
+        is_approved=is_approved  # Ensure is_approved is passed to Opportunity constructor
     )
     db.session.add(opp)
     db.session.commit()
 
 
 def get_opportunities(query=None):
-    db = get_db()
+    # No need for get_db()
     if not query:
         return db.session.query(Opportunity).all()
-    query = f"%{query.lower()}%"
+    # Renamed to avoid conflict with function arg
+    query_param = f"%{query.lower()}%"
     return db.session.query(Opportunity).filter(
-        (Opportunity.title.ilike(query)) |  # type: ignore
-        (Opportunity.category.ilike(query))  # type: ignore
+        (Opportunity.title.ilike(query_param)) |
+        (Opportunity.category.ilike(query_param))
     ).all()
-
-
-# Creation of the user model
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    # Correct spelling here
-    password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.String(50), default='user')
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(
-            password)  # Corrected typo here!
-
-    def check_password(self, password):
-        # Corrected typo here!
-        return check_password_hash(self.password_hash, password)
-
-
-@login.user_loader
-def load_user(id):
-    return User.query.get(int(id))
