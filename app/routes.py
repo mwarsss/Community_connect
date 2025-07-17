@@ -301,3 +301,53 @@ def delete_opportunity(opportunity_id):
 def public_feed():
     opportunities = Opportunity.query.order_by(Opportunity.id.desc()).all()
     return render_template('public_feed.html', opportunities=opportunities)
+
+
+@main.route('/admin/users')
+@login_required
+def user_moderation():
+    if current_user.role not in ['admin', 'moderator']:
+        flash("Unauthorized access.", "danger")
+        return redirect(url_for('main.index'))
+
+    users = User.query.all()
+    return render_template('user_moderation.html', users=users)
+
+
+@main.route('/admin/suspend/<int:user_id>')
+@login_required
+def suspend_user(user_id):
+    if current_user.role not in ['admin', 'moderator']:
+        flash("Unauthorized")
+        return redirect(url_for('index'))
+    user = User.query.get_or_404(user_id)
+    user.suspend()
+    db.session.commit()
+    flash("User suspended")
+    return redirect(url_for('user_moderation'))
+
+
+@main.route('/admin/activate/<int:user_id>')
+@login_required
+def activate_user(user_id):
+    if current_user.role not in ['admin', 'moderator']:
+        flash("Unauthorized")
+        return redirect(url_for('index'))
+    user = User.query.get_or_404(user_id)
+    user.activate()
+    db.session.commit()
+    flash("User activated")
+    return redirect(url_for('user_moderation'))
+
+
+@main.route('/admin/role/<int:user_id>/<role>')
+@login_required
+def change_role(user_id, role):
+    if current_user.role != 'admin':
+        flash("Only admins can change roles.")
+        return redirect(url_for('index'))
+    user = User.query.get_or_404(user_id)
+    user.promote(role)
+    db.session.commit()
+    flash(f"Role changed to {role}")
+    return redirect(url_for('user_moderation'))
