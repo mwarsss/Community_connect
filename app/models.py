@@ -14,29 +14,60 @@ from datetime import datetime  # Import datetime for timestamps
 
 # It's good practice to define the User model first if other models (like Opportunity)
 # have a foreign key relationship to it.
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
-    # Ensure nullable=False for consistency
-    role = db.Column(db.String(50), default='user', nullable=False)
+    # Role can be 'user', 'moderator', 'admin'. Max length 20 is good.
+    role = db.Column(db.String(20), default='user', nullable=False)
+    # Ensure nullable=False for boolean defaults
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    # Nullable as it's only set when suspended
+    suspended_at = db.Column(db.DateTime, nullable=True)
 
-    # Define a custom __init__ for clarity
+    # Define a custom __init__ method for initial object creation
+    # password_hash will be set by set_password method later.
+    # is_active and suspended_at have defaults in Column definition.
     def __init__(self, username, email, role='user'):
         self.username = username
         self.email = email
         self.role = role
 
-    # These methods must be INSIDE the User class
+    # Method to set the user's password hash
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
+    # Method to check a provided password against the stored hash
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    # Method to suspend a user account
+    def suspend(self):
+        self.is_active = False
+        # Use parentheses here as it's a function call
+        self.suspended_at = datetime.utcnow()
+
+    # Method to reactivate a user account
+    def activate(self):
+        self.is_active = True
+        self.suspended_at = None  # Clear suspension timestamp
+
+    # Method to change a user's role
+    def promote(self, new_role):
+        # You might want to add validation here to ensure new_role is a valid role string
+        valid_roles = ['user', 'moderator', 'admin']
+        if new_role in valid_roles:
+            self.role = new_role
+        else:
+            # Handle invalid role, e.g., raise an error or log a warning
+            print(
+                f"Warning: Attempted to set invalid role '{new_role}' for user {self.username}")
+
+    # Standard representation for debugging and logging
     def __repr__(self):
-        return f"<User {self.username}>"
+        return f"<User {self.username} (Role: {self.role}, Active: {self.is_active})>"
 
 
 # Define model for Opportunity
