@@ -253,3 +253,39 @@ def dashboard():
     opportunities = Opportunity.query.filter_by(
         user_id=current_user.id).order_by(Opportunity.created_at.desc()).all()
     return render_template("dashboard.html", opportunities=opportunities)
+
+
+# Edit an opportunity
+@main.route('/opportunity/<int:opportunity_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_opportunity(opportunity_id):
+    opportunity = Opportunity.query.get_or_404(opportunity_id)
+    if opportunity.user_id != current_user.id:
+        flash('You are not authorized to edit this opportunity.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
+        opportunity.title = request.form['title']
+        opportunity.description = request.form['description']
+        opportunity.location = request.form['location']
+        db.session.commit()
+        flash('Opportunity updated successfully.', 'success')
+        return redirect(url_for('main.dashboard'))
+
+    return render_template('edit_opportunity.html', opportunity=opportunity)
+
+# Delete an opportunity
+
+
+@main.route('/opportunity/<int:opportunity_id>/delete', methods=['POST'])
+@login_required
+def delete_opportunity(opportunity_id):
+    opportunity = Opportunity.query.get_or_404(opportunity_id)
+    if opportunity.user_id != current_user.id:
+        flash('You are not authorized to delete this opportunity.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    db.session.delete(opportunity)
+    db.session.commit()
+    flash('Opportunity deleted successfully.', 'success')
+    return redirect(url_for('main.dashboard'))
