@@ -12,6 +12,7 @@
         placeholder="Search by title/category"
         value="{{ request.args.get('q', '') }}"
       />
+      <a href="{{ url_for('main.public_feed') }}">Explore Opportunities</a>
       {% if current_user.is_authenticated %}
   Logged in as {{ current_user.username }} | <a href="/logout">Logout</a>
       {% else %}

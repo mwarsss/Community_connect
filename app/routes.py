@@ -255,6 +255,12 @@ def dashboard():
     return render_template("dashboard.html", opportunities=opportunities)
 
 
+@main.route('/opportunity/<int:opportunity_id>')
+def view_opportunity(opportunity_id):
+    opportunity = Opportunity.query.get_or_404(opportunity_id)
+    return render_template('view_opportunity.html', opportunity=opportunity)
+
+
 # Edit an opportunity
 @main.route('/opportunity/<int:opportunity_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -289,3 +295,9 @@ def delete_opportunity(opportunity_id):
     db.session.commit()
     flash('Opportunity deleted successfully.', 'success')
     return redirect(url_for('main.dashboard'))
+
+
+@main.route('/opportunities')
+def public_feed():
+    opportunities = Opportunity.query.order_by(Opportunity.id.desc()).all()
+    return render_template('public_feed.html', opportunities=opportunities)

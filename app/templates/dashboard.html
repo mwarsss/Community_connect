@@ -1,24 +1,23 @@
-{% extends "base.html" %}
-{% block content %}
-  <h2>Your Submitted Opportunities</h2>
+{% extends "index.html" %} {% block content %}
+<h2>Your Submitted Opportunities</h2>
 
-  {% if opportunities %}
-    <ul>
-      {% for opp in opportunities %}
-        <li>
-          <strong>{{ opp.title }}</strong><br>
-          {{ opp.description }}<br>
-          <small>Status: 
-            {% if opp.is_approved %}
-              ✅ Approved
-            {% else %}
-              ⏳ Pending Approval
-            {% endif %}
-          </small>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p>You haven't submitted any opportunities yet.</p>
-  {% endif %}
-{% endblock %}
+{% if opportunities %}
+<ul>
+  {% for opp in opportunities %}
+  <li>
+    <strong>{{ opp.title }}</strong><br />
+    {{ opp.description }}<br />
+    <a href="{{ url_for('main.view_opportunity', opportunity_id=opp.id) }}">
+      <h3>{{ opp.title }}</h3>
+    </a>
+
+    <small
+      >Status: {% if opp.is_approved %} ✅ Approved {% else %} ⏳ Pending
+      Approval {% endif %}
+    </small>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>You haven't submitted any opportunities yet.</p>
+{% endif %} {% endblock %}
