@@ -1,6 +1,7 @@
-from flask import render_template, request, redirect, flash, url_for, Blueprint, current_app
+from flask import jsonify, render_template, request, redirect, flash, url_for, Blueprint, current_app
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.security import check_password_hash
+from app.decorators import moderator_required
 
 # IMPORTANT: Only import 'db' directly from 'app'
 # This 'db' instance is the one initialized by SQLAlchemy in app/__init__.py
@@ -351,3 +352,57 @@ def change_role(user_id, role):
     db.session.commit()
     flash(f"Role changed to {role}")
     return redirect(url_for('user_moderation'))
+
+
+@main.route('/report', methods=['POST'])
+@login_required
+def submit_report():
+    data = request.get_json()
+    reason = data.get('reason')
+    reported_user_id = data.get('reported_user_id')
+    reported_opportunity_id = data.get('reported_opportunity_id')
+
+    if not reason or (not reported_user_id and not reported_opportunity_id):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    report = Report(
+        reporter_id=current_user.id,
+        reported_user_id=reported_user_id,
+        reported_opportunity_id=reported_opportunity_id,
+        reason=reason
+    )
+    db.session.add(report)
+    db.session.commit()
+    return jsonify({"message": "Report submitted"}), 201
+
+
+@main.route('/moderator/reports', methods=['GET'])
+@login_required
+@moderator_required
+def view_reports():
+    reports = Report.query.order_by(Report.timestamp.desc()).all()
+    data = []
+
+    for report in reports:
+        data.append({
+            'id': report.id,
+            'reporter': report.reporter.username,
+            'reason': report.reason,
+            'timestamp': report.timestamp.isoformat(),
+            'reported_user': report.reported_user.username if report.reported_user else None,
+            'reported_opportunity': {
+                'id': report.reported_opportunity.id,
+                'title': report.reported_opportunity.title
+            } if report.reported_opportunity else None
+        })
+    return jsonify(data), 200
+
+
+@main.route('/moderator/delete_user/<int:user_id>', methods=['DELETE'])
+@login_required
+@moderator_required
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": "User deleted"}), 200
