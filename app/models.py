@@ -135,6 +135,26 @@ def add_opportunity(title, description, category, location, user_id, is_approved
     db.session.add(opp)
     db.session.commit()
 
+# app/models.py
+
+
+class Report(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    reporter_id = db.Column(
+        db.Integer, db.ForeignKey('user.id'), nullable=False)
+    reported_user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id'), nullable=True)
+    reported_opportunity_id = db.Column(
+        db.Integer, db.ForeignKey('opportunity.id'), nullable=True)
+    reason = db.Column(db.String(255), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    reporter = db.relationship('User', foreign_keys=[
+                               reporter_id], backref='reports_made')
+    reported_user = db.relationship(
+        'User', foreign_keys=[reported_user_id], backref='reports_received')
+    reported_opportunity = db.relationship('Opportunity', backref='reports')
+
 
 def get_opportunities(query=None):
     # No need for get_db()
