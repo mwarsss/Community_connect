@@ -32,6 +32,7 @@
     </form>
 
     <a href="/new">+ Post New Opportunity</a>
+    <ul>
       {% for opp in opportunities %}
       <li>
         <strong>{{ opp.title }}</strong> ({{ opp.category }})<br />
