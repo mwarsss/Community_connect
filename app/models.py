@@ -26,10 +26,11 @@ class User(db.Model, UserMixin):
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     # Nullable as it's only set when suspended
     suspended_at = db.Column(db.DateTime, nullable=True)
-
+    is_banned = db.Column(db.Boolean, default=False, nullable=False)
     # Define a custom __init__ method for initial object creation
     # password_hash will be set by set_password method later.
     # is_active and suspended_at have defaults in Column definition.
+
     def __init__(self, username, email, role='user'):
         self.username = username
         self.email = email
@@ -154,6 +155,16 @@ class Report(db.Model):
     reported_user = db.relationship(
         'User', foreign_keys=[reported_user_id], backref='reports_received')
     reported_opportunity = db.relationship('Opportunity', backref='reports')
+    is_reviewed = db.Column(db.Boolean, default=False, nullable=False)
+
+    def __init__(self, reporter_id, reported_user_id=None, reported_opportunity_id=None, reason=None):
+        self.reporter_id = reporter_id
+        self.reported_user_id = reported_user_id
+        self.reported_opportunity_id = reported_opportunity_id
+        self.reason = reason
+
+    def __repr__(self):
+        return f"<Report {self.id} by {self.reporter_id}>"
 
 
 def get_opportunities(query=None):
