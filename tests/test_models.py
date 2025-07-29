@@ -11,6 +11,12 @@ class TestUser:
         """Test user creation with basic fields."""
         with app.app_context():
             user = User(username='testuser', email='test@example.com')
+            # Set password to avoid NULL constraint
+            user.set_password('password123')
+            db.session.add(user)
+            db.session.commit()
+            db.session.refresh(user)
+
             assert user.username == 'testuser'
             assert user.email == 'test@example.com'
             assert user.role == 'user'  # default role
@@ -32,8 +38,11 @@ class TestUser:
         """Test user suspension and activation."""
         with app.app_context():
             user = User(username='testuser', email='test@example.com')
+            # Set password to avoid NULL constraint
+            user.set_password('password123')
             db.session.add(user)
             db.session.commit()
+            db.session.refresh(user)
 
             # Test suspension
             user.suspend()
