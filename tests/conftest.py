@@ -49,6 +49,8 @@ def test_user(app):
         user.set_password('password123')
         db.session.add(user)
         db.session.commit()
+        # Refresh the user to ensure it's attached to the session
+        db.session.refresh(user)
         return user
 
 
@@ -60,6 +62,7 @@ def test_admin(app):
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
+        db.session.refresh(admin)
         return admin
 
 
@@ -72,6 +75,7 @@ def test_moderator(app):
         moderator.set_password('moderator123')
         db.session.add(moderator)
         db.session.commit()
+        db.session.refresh(moderator)
         return moderator
 
 
@@ -89,6 +93,7 @@ def test_opportunity(app, test_user):
         )
         db.session.add(opportunity)
         db.session.commit()
+        db.session.refresh(opportunity)
         return opportunity
 
 
@@ -103,4 +108,5 @@ def test_report(app, test_user, test_opportunity):
         )
         db.session.add(report)
         db.session.commit()
+        db.session.refresh(report)
         return report
