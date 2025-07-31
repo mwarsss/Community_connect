@@ -190,31 +190,31 @@ class TestModerationRoutes:
         response = client.get('/moderator/opportunities')
         assert response.status_code == 200
 
-    def test_approve_opportunity(self, client, test_moderator, app):
+    def test_approve_opportunity(self, client, test_moderator, test_user, app):
         """Test approving an opportunity."""
-        # Create an unapproved opportunity
         with app.app_context():
+            # Create an unapproved opportunity
             opportunity = Opportunity(
                 title='Unapproved Opportunity',
                 description='This needs approval',
                 category='Education',
                 location='Test City',
-                user_id=test_moderator.id,
+                user_id=test_user.id,
                 is_approved=False
             )
+            db.session.add(test_user)
             db.session.add(opportunity)
             db.session.commit()
 
-        # Login as moderator
-        client.post('/login', data={
-            'username': 'moderator',
-            'password': 'moderator123'
-        })
+            # Login as moderator
+            client.post('/login', data={
+                'username': 'moderator',
+                'password': 'moderator123'
+            })
 
-        response = client.post(f'/moderator/approve/{opportunity.id}')
-        assert response.status_code == 302  # Redirect
+            response = client.post(f'/moderator/approve/{opportunity.id}')
+            assert response.status_code == 302  # Redirect
 
-        with app.app_context():
             opportunity = Opportunity.query.get(opportunity.id)
             assert opportunity.is_approved is True
 

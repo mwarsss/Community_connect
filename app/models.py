@@ -4,7 +4,9 @@ from app import db  # Correct way to import the SQLAlchemy instance
 # Import LoginManager to decorate load_user
 from flask_login import UserMixin, LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime  # Import datetime for timestamps
+from datetime import datetime, timedelta  # Import datetime for timestamps
+import secrets
+import string
 
 
 # Initialize LoginManager here if not done in __init__.py,
@@ -23,13 +25,13 @@ class User(db.Model, UserMixin):
     # Role can be 'user', 'moderator', 'admin'. Max length 20 is good.
     role = db.Column(db.String(20), default='user', nullable=False)
     # Ensure nullable=False for boolean defaults
-    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    account_active = db.Column(db.Boolean, default=True, nullable=False)
     # Nullable as it's only set when suspended
     suspended_at = db.Column(db.DateTime, nullable=True)
     is_banned = db.Column(db.Boolean, default=False, nullable=False)
     # Define a custom __init__ method for initial object creation
     # password_hash will be set by set_password method later.
-    # is_active and suspended_at have defaults in Column definition.
+    # account_active and suspended_at have defaults in Column definition.
 
     def __init__(self, username, email, role='user'):
         self.username = username
@@ -46,13 +48,13 @@ class User(db.Model, UserMixin):
 
     # Method to suspend a user account
     def suspend(self):
-        self.is_active = False
+        self.account_active = False
         # Use parentheses here as it's a function call
         self.suspended_at = datetime.utcnow()
 
     # Method to reactivate a user account
     def activate(self):
-        self.is_active = True
+        self.account_active = True
         self.suspended_at = None  # Clear suspension timestamp
 
     # Method to change a user's role
@@ -66,9 +68,54 @@ class User(db.Model, UserMixin):
             print(
                 f"Warning: Attempted to set invalid role '{new_role}' for user {self.username}")
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'role': self.role,
+            'account_active': self.account_active,
+            'is_banned': self.is_banned,
+        }
+
     # Standard representation for debugging and logging
     def __repr__(self):
-        return f"<User {self.username} (Role: {self.role}, Active: {self.is_active})>"
+        return f"<User {self.username} (Role: {self.role}, Active: {self.account_active})>"
+
+
+class PasswordResetToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    token = db.Column(db.String(100), unique=True, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False, nullable=False)
+
+    # Relationship to User
+    user = db.relationship('User', backref=db.backref(
+        'password_reset_tokens', lazy=True))
+
+    def __init__(self, user_id, expires_in_hours=24):
+        self.user_id = user_id
+        self.token = self._generate_token()
+        self.expires_at = datetime.utcnow() + timedelta(hours=expires_in_hours)
+
+    def _generate_token(self):
+        """Generate a secure random token"""
+        alphabet = string.ascii_letters + string.digits
+        return ''.join(secrets.choice(alphabet) for _ in range(32))
+
+    def is_valid(self):
+        """Check if the token is still valid (not expired and not used)"""
+        return not self.used and datetime.utcnow() < self.expires_at
+
+    def mark_as_used(self):
+        """Mark the token as used"""
+        self.used = True
+
+    def __repr__(self):
+        return f"<PasswordResetToken {self.token[:8]}... for user {self.user_id}>"
 
 
 # Define model for Opportunity
@@ -78,67 +125,35 @@ class Opportunity(db.Model):
     description = db.Column(db.Text, nullable=False)
     category = db.Column(db.String(50), nullable=False)
     location = db.Column(db.String(100), nullable=False)
-    # Ensure nullable=False for consistency
     is_approved = db.Column(db.Boolean, default=False, nullable=False)
-    # Use datetime.utcnow, ensure nullable=False
     created_at = db.Column(
         db.DateTime, default=datetime.utcnow, nullable=False)
     approved_by = db.Column(db.String(120), nullable=True)
-
-    # Add the foreign key to link to the User model
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    # Define a relationship to the User model (optional, but very useful)
+
+    # Relationship to User
     user = db.relationship(
         'User', backref=db.backref('opportunities', lazy=True))
 
-    def __init__(self, title, description, category, location, user_id, is_approved=False, approved_by=None):
-        self.title = title
-        self.description = description
-        self.category = category
-        self.location = location
-        self.user_id = user_id
-        self.is_approved = is_approved  # Initialize these fields
-        self.approved_by = approved_by  # Initialize these fields
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'category': self.category,
+            'location': self.location,
+            'is_approved': self.is_approved,
+            'created_at': self.created_at.isoformat(),
+            'approved_by': self.approved_by,
+            'user_id': self.user_id,
+            'username': self.user.username,
+        }
 
     def __repr__(self):
-        return f"<Opportunity {self.title}>"
+        return f"<Opportunity {self.title} by {self.user.username}>"
 
 
-# This part is crucial for Flask-Login.
-# Ensure 'login' (LoginManager instance) is available for this decorator.
-# If 'login' is created in __init__.py, you'll need to import it here.
-# Assuming 'login' is initialized in app/__init__.py and exported.
-
-
-@login.user_loader
-def load_user(id):
-    return User.query.get(int(id))
-
-# --- Functions (if still needed, though often integrated into routes/views) ---
-
-# These functions are often better handled directly in your routes.py
-# or by creating a dedicated service layer/repository pattern.
-# If you keep them, make sure they don't cause new circular imports.
-# I'll keep them as you provided them, but note they directly use 'db'
-# which is globally available from 'from app import db'.
-
-
-def add_opportunity(title, description, category, location, user_id, is_approved=False):
-    # No need for get_db()
-    opp = Opportunity(
-        title=title,
-        description=description,
-        category=category,
-        location=location,
-        user_id=user_id,
-        is_approved=is_approved  # Ensure is_approved is passed to Opportunity constructor
-    )
-    db.session.add(opp)
-    db.session.commit()
-
-# app/models.py
-
-
+# Define model for Report
 class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     reporter_id = db.Column(
@@ -148,32 +163,22 @@ class Report(db.Model):
     reported_opportunity_id = db.Column(
         db.Integer, db.ForeignKey('opportunity.id'), nullable=True)
     reason = db.Column(db.String(255), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
-    reporter = db.relationship('User', foreign_keys=[
-                               reporter_id], backref='reports_made')
-    reported_user = db.relationship(
-        'User', foreign_keys=[reported_user_id], backref='reports_received')
-    reported_opportunity = db.relationship('Opportunity', backref='reports')
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
     is_reviewed = db.Column(db.Boolean, default=False, nullable=False)
 
-    def __init__(self, reporter_id, reported_user_id=None, reported_opportunity_id=None, reason=None):
-        self.reporter_id = reporter_id
-        self.reported_user_id = reported_user_id
-        self.reported_opportunity_id = reported_opportunity_id
-        self.reason = reason
+    # Relationships
+    reporter = db.relationship('User', foreign_keys=[
+                               reporter_id], backref=db.backref('reports_made', lazy=True))
+    reported_user = db.relationship('User', foreign_keys=[
+                                    reported_user_id], backref=db.backref('reports_received', lazy=True))
+    reported_opportunity = db.relationship(
+        'Opportunity', backref=db.backref('reports', lazy=True))
 
     def __repr__(self):
-        return f"<Report {self.id} by {self.reporter_id}>"
+        return f"<Report {self.id} by {self.reporter.username}>"
 
 
-def get_opportunities(query=None):
-    # No need for get_db()
-    if not query:
-        return db.session.query(Opportunity).all()
-    # Renamed to avoid conflict with function arg
-    query_param = f"%{query.lower()}%"
-    return db.session.query(Opportunity).filter(
-        (Opportunity.title.ilike(query_param)) |
-        (Opportunity.category.ilike(query_param))
-    ).all()
+# User loader for Flask-Login
+@login.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))

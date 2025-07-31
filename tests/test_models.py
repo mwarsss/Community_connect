@@ -111,6 +111,7 @@ class TestOpportunity:
                 location='Test City',
                 user_id=test_user.id
             )
+            db.session.add(test_user)
             db.session.add(opportunity)
             db.session.commit()
 
@@ -171,6 +172,8 @@ class TestReport:
                 reported_opportunity_id=test_opportunity.id,
                 reason='Test report'
             )
+            db.session.add(test_user)
+            db.session.add(test_opportunity)
             db.session.add(report)
             db.session.commit()
 
