@@ -22,6 +22,7 @@
                 {#if $user.role === 'admin' || $user.role === 'moderator'}
                     <a href="/moderator" class="px-4 hover:text-gray-300">Moderator</a>
                 {/if}
+                <a href="/opportunities/new" class="px-4 hover:text-gray-300">Create Opportunity</a>
                 <button on:click={logout} class="px-4 hover:text-gray-300">Logout</button>
             {:else}
                 <a href="/login" class="px-4 hover:text-gray-300">Login</a>

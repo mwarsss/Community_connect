@@ -125,6 +125,7 @@ class Opportunity(db.Model):
     description = db.Column(db.Text, nullable=False)
     category = db.Column(db.String(50), nullable=False)
     location = db.Column(db.String(100), nullable=False)
+    tags = db.Column(db.String(255), nullable=True)  # Add tags field
     is_approved = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(
         db.DateTime, default=datetime.utcnow, nullable=False)
@@ -142,11 +143,14 @@ class Opportunity(db.Model):
             'description': self.description,
             'category': self.category,
             'location': self.location,
+            'tags': self.tags.split(',') if self.tags else [],
             'is_approved': self.is_approved,
             'created_at': self.created_at.isoformat(),
             'approved_by': self.approved_by,
             'user_id': self.user_id,
             'username': self.user.username,
+            'reactions': {reaction.id: reaction.reaction_type for reaction in self.reactions},
+            'bookmarks': [bookmark.user_id for bookmark in self.bookmarks],
         }
 
     def __repr__(self):
@@ -176,6 +180,32 @@ class Report(db.Model):
 
     def __repr__(self):
         return f"<Report {self.id} by {self.reporter.username}>"
+
+class Reaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    opportunity_id = db.Column(db.Integer, db.ForeignKey('opportunity.id'), nullable=False)
+    reaction_type = db.Column(db.String(20), nullable=False)  # e.g., 'like', 'love', 'wow'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('reactions', lazy=True))
+    opportunity = db.relationship('Opportunity', backref=db.backref('reactions', lazy=True))
+
+    def __repr__(self):
+        return f"<Reaction {self.reaction_type} by {self.user.username} on {self.opportunity.title}>"
+
+
+class Bookmark(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    opportunity_id = db.Column(db.Integer, db.ForeignKey('opportunity.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('bookmarks', lazy=True))
+    opportunity = db.relationship('Opportunity', backref=db.backref('bookmarks', lazy=True))
+
+    def __repr__(self):
+        return f"<Bookmark by {self.user.username} on {self.opportunity.title}>"
 
 
 # User loader for Flask-Login
