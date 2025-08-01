@@ -6,6 +6,7 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_cors import CORS
+from flask_socketio import SocketIO
 import os  # Keep os for os.getenv
 
 # Load environment variables from .env file
@@ -16,6 +17,7 @@ login = LoginManager()
 db = SQLAlchemy()
 migrate = Migrate()
 mail = Mail()
+socketio = SocketIO()
 
 
 def create_app():
@@ -51,6 +53,7 @@ def create_app():
     login.init_app(app)
     migrate.init_app(app, db)
     mail.init_app(app)
+    socketio.init_app(app, cors_allowed_origins="*")
 
     # Configure Flask-Login settings
     login.login_view = "main.login"

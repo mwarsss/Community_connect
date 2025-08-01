@@ -4,6 +4,8 @@ from app.decorators import moderator_required
 from app import db
 from app.models import User, Opportunity, Report, PasswordResetToken
 from app.utils import role_required
+from app import socketio
+from flask_socketio import emit
 
 CATEGORIES = ["Education", "Climate", "Health", "Youth", "Technology", "Mental Health"]
 
@@ -14,6 +16,9 @@ moderator_bp = Blueprint('moderator', __name__, url_prefix='/moderator')
 def index():
     query = request.args.get("q", "").strip()
     selected_category = request.args.get("category", "").strip()
+    location = request.args.get("location", "").strip()
+    tags = request.args.get("tags", "").strip()
+    status = request.args.get("status", "").strip()
     page = request.args.get("page", 1, type=int)
 
     results_query = Opportunity.query.filter_by(is_approved=True)
@@ -28,6 +33,18 @@ def index():
 
     if selected_category and selected_category in CATEGORIES:
         results_query = results_query.filter_by(category=selected_category)
+
+    if location:
+        results_query = results_query.filter(Opportunity.location.ilike(f"%{location}%"))
+
+    if tags:
+        for tag in tags.split(','):
+            results_query = results_query.filter(Opportunity.tags.ilike(f"%{tag.strip()}%"))
+
+    if status == "approved":
+        results_query = results_query.filter_by(is_approved=True)
+    elif status == "pending":
+        results_query = results_query.filter_by(is_approved=False)
 
     paginated = results_query.order_by(Opportunity.created_at.desc()).paginate(
         page=page, per_page=5, error_out=False
@@ -51,6 +68,7 @@ def new_opportunity():
     description = data.get("description", "").strip()
     category = data.get("category", "").strip()
     location = data.get("location", "").strip()
+    tags = data.get("tags", "").strip()
 
     if not all([title, description, category, location]):
         return jsonify({"error": "All fields are required."}), 400
@@ -63,6 +81,7 @@ def new_opportunity():
         description=description,
         category=category,
         location=location,
+        tags=tags,  # Add tags to the new opportunity
         user_id=current_user.id
     )
 
@@ -340,3 +359,59 @@ def mark_report_reviewed(report_id):
     report.is_reviewed = True
     db.session.commit()
     return jsonify({"message": "Report marked as reviewed"}), 200
+
+@main.route('/opportunity/<int:opportunity_id>/react', methods=['POST'])
+@login_required
+def react_to_opportunity(opportunity_id):
+    data = request.get_json()
+    reaction_type = data.get('reaction_type')
+    opportunity = Opportunity.query.get_or_404(opportunity_id)
+
+    existing_reaction = Reaction.query.filter_by(user_id=current_user.id, opportunity_id=opportunity.id).first()
+
+    if existing_reaction:
+        if existing_reaction.reaction_type == reaction_type:
+            # User is removing their reaction
+            db.session.delete(existing_reaction)
+            db.session.commit()
+            socketio.emit('reaction_update', {'opportunity_id': opportunity.id, 'reactions': {reaction.id: reaction.reaction_type for reaction in opportunity.reactions}})
+            return jsonify({"message": "Reaction removed."}), 200
+        else:
+            # User is changing their reaction
+            existing_reaction.reaction_type = reaction_type
+            db.session.commit()
+            socketio.emit('reaction_update', {'opportunity_id': opportunity.id, 'reactions': {reaction.id: reaction.reaction_type for reaction in opportunity.reactions}})
+            return jsonify(existing_reaction.to_dict()), 200
+
+    new_reaction = Reaction(
+        user_id=current_user.id,
+        opportunity_id=opportunity.id,
+        reaction_type=reaction_type
+    )
+    db.session.add(new_reaction)
+    db.session.commit()
+    socketio.emit('reaction_update', {'opportunity_id': opportunity.id, 'reactions': {reaction.id: reaction.reaction_type for reaction in opportunity.reactions}})
+    return jsonify(new_reaction.to_dict()), 201
+
+
+@main.route('/opportunity/<int:opportunity_id>/bookmark', methods=['POST'])
+@login_required
+def bookmark_opportunity(opportunity_id):
+    opportunity = Opportunity.query.get_or_404(opportunity_id)
+    existing_bookmark = Bookmark.query.filter_by(user_id=current_user.id, opportunity_id=opportunity.id).first()
+
+    if existing_bookmark:
+        # User is removing their bookmark
+        db.session.delete(existing_bookmark)
+        db.session.commit()
+        socketio.emit('bookmark_update', {'opportunity_id': opportunity.id, 'bookmarks': [bookmark.user_id for bookmark in opportunity.bookmarks]})
+        return jsonify({"message": "Bookmark removed."}), 200
+
+    new_bookmark = Bookmark(
+        user_id=current_user.id,
+        opportunity_id=opportunity.id
+    )
+    db.session.add(new_bookmark)
+    db.session.commit()
+    socketio.emit('bookmark_update', {'opportunity_id': opportunity.id, 'bookmarks': [bookmark.user_id for bookmark in opportunity.bookmarks]})
+    return jsonify(new_bookmark.to_dict()), 201
