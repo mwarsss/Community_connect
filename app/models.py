@@ -149,8 +149,8 @@ class Opportunity(db.Model):
             'approved_by': self.approved_by,
             'user_id': self.user_id,
             'username': self.user.username,
-            'reactions': {reaction.id: reaction.reaction_type for reaction in self.reactions},
-            'bookmarks': [bookmark.user_id for bookmark in self.bookmarks],
+            'reactions': [reaction.to_dict() for reaction in self.reactions],
+            'bookmarks': [bookmark.to_dict() for bookmark in self.bookmarks],
         }
 
     def __repr__(self):
@@ -178,6 +178,17 @@ class Report(db.Model):
     reported_opportunity = db.relationship(
         'Opportunity', backref=db.backref('reports', lazy=True))
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'reporter_username': self.reporter.username,
+            'reason': self.reason,
+            'timestamp': self.timestamp.isoformat(),
+            'is_reviewed': self.is_reviewed,
+            'reported_user': self.reported_user.to_dict() if self.reported_user else None,
+            'reported_opportunity': self.reported_opportunity.to_dict() if self.reported_opportunity else None
+        }
+
     def __repr__(self):
         return f"<Report {self.id} by {self.reporter.username}>"
 
@@ -191,6 +202,15 @@ class Reaction(db.Model):
     user = db.relationship('User', backref=db.backref('reactions', lazy=True))
     opportunity = db.relationship('Opportunity', backref=db.backref('reactions', lazy=True))
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'opportunity_id': self.opportunity_id,
+            'reaction_type': self.reaction_type,
+            'created_at': self.created_at.isoformat()
+        }
+
     def __repr__(self):
         return f"<Reaction {self.reaction_type} by {self.user.username} on {self.opportunity.title}>"
 
@@ -203,6 +223,14 @@ class Bookmark(db.Model):
 
     user = db.relationship('User', backref=db.backref('bookmarks', lazy=True))
     opportunity = db.relationship('Opportunity', backref=db.backref('bookmarks', lazy=True))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'opportunity_id': self.opportunity_id,
+            'created_at': self.created_at.isoformat()
+        }
 
     def __repr__(self):
         return f"<Bookmark by {self.user.username} on {self.opportunity.title}>"

@@ -215,10 +215,7 @@ def delete_opportunity(opportunity_id):
     db.session.commit()
     return jsonify({"message": "Opportunity deleted successfully."}), 200
 
-@main.route('/opportunities')
-def public_feed():
-    opportunities = Opportunity.query.filter_by(is_approved=True).order_by(Opportunity.id.desc()).all()
-    return jsonify([opp.to_dict() for opp in opportunities])
+
 
 @main.route('/admin/users')
 @login_required
@@ -300,19 +297,7 @@ def submit_report():
 @moderator_required
 def view_reports():
     reports = Report.query.order_by(Report.timestamp.desc()).all()
-    data = []
-
-    for report in reports:
-        data.append({
-            'id': report.id,
-            'reporter_username': report.reporter.username,
-            'reason': report.reason,
-            'timestamp': report.timestamp.isoformat(),
-            'is_reviewed': report.is_reviewed,
-            'reported_user': report.reported_user.to_dict() if report.reported_user else None,
-            'reported_opportunity': report.reported_opportunity.to_dict() if report.reported_opportunity else None
-        })
-    return jsonify(data), 200
+    return jsonify([report.to_dict() for report in reports]), 200
 
 @moderator_bp.route('/delete_user/<int:user_id>', methods=['DELETE'])
 @login_required
@@ -380,8 +365,8 @@ def react_to_opportunity(opportunity_id):
             # User is changing their reaction
             existing_reaction.reaction_type = reaction_type
             db.session.commit()
-            socketio.emit('reaction_update', {'opportunity_id': opportunity.id, 'reactions': {reaction.id: reaction.reaction_type for reaction in opportunity.reactions}})
-            return jsonify(existing_reaction.to_dict()), 200
+            socketio.emit('reaction_update', {'opportunity_id': opportunity.id, 'reactions': [reaction.to_dict() for reaction in opportunity.reactions]})
+            return jsonify(opportunity.to_dict()), 200
 
     new_reaction = Reaction(
         user_id=current_user.id,
@@ -390,8 +375,8 @@ def react_to_opportunity(opportunity_id):
     )
     db.session.add(new_reaction)
     db.session.commit()
-    socketio.emit('reaction_update', {'opportunity_id': opportunity.id, 'reactions': {reaction.id: reaction.reaction_type for reaction in opportunity.reactions}})
-    return jsonify(new_reaction.to_dict()), 201
+    socketio.emit('reaction_update', {'opportunity_id': opportunity.id, 'reactions': [reaction.to_dict() for reaction in opportunity.reactions]})
+    return jsonify(opportunity.to_dict()), 201
 
 
 @main.route('/opportunity/<int:opportunity_id>/bookmark', methods=['POST'])
@@ -404,8 +389,8 @@ def bookmark_opportunity(opportunity_id):
         # User is removing their bookmark
         db.session.delete(existing_bookmark)
         db.session.commit()
-        socketio.emit('bookmark_update', {'opportunity_id': opportunity.id, 'bookmarks': [bookmark.user_id for bookmark in opportunity.bookmarks]})
-        return jsonify({"message": "Bookmark removed."}), 200
+        socketio.emit('bookmark_update', {'opportunity_id': opportunity.id, 'bookmarks': [bookmark.to_dict() for bookmark in opportunity.bookmarks]})
+        return jsonify(opportunity.to_dict()), 200
 
     new_bookmark = Bookmark(
         user_id=current_user.id,
@@ -413,5 +398,5 @@ def bookmark_opportunity(opportunity_id):
     )
     db.session.add(new_bookmark)
     db.session.commit()
-    socketio.emit('bookmark_update', {'opportunity_id': opportunity.id, 'bookmarks': [bookmark.user_id for bookmark in opportunity.bookmarks]})
-    return jsonify(new_bookmark.to_dict()), 201
+    socketio.emit('bookmark_update', {'opportunity_id': opportunity.id, 'bookmarks': [bookmark.to_dict() for bookmark in opportunity.bookmarks]})
+    return jsonify(opportunity.to_dict()), 201
