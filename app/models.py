@@ -63,10 +63,9 @@ class User(db.Model, UserMixin):
         valid_roles = ['user', 'moderator', 'admin']
         if new_role in valid_roles:
             self.role = new_role
+            return True
         else:
-            # Handle invalid role, e.g., raise an error or log a warning
-            print(
-                f"Warning: Attempted to set invalid role '{new_role}' for user {self.username}")
+            return False
 
     def to_dict(self):
         return {
@@ -192,15 +191,20 @@ class Report(db.Model):
     def __repr__(self):
         return f"<Report {self.id} by {self.reporter.username}>"
 
+
 class Reaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    opportunity_id = db.Column(db.Integer, db.ForeignKey('opportunity.id'), nullable=False)
-    reaction_type = db.Column(db.String(20), nullable=False)  # e.g., 'like', 'love', 'wow'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    opportunity_id = db.Column(db.Integer, db.ForeignKey(
+        'opportunity.id'), nullable=False)
+    # e.g., 'like', 'love', 'wow'
+    reaction_type = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=datetime.utcnow, nullable=False)
 
     user = db.relationship('User', backref=db.backref('reactions', lazy=True))
-    opportunity = db.relationship('Opportunity', backref=db.backref('reactions', lazy=True))
+    opportunity = db.relationship(
+        'Opportunity', backref=db.backref('reactions', lazy=True))
 
     def to_dict(self):
         return {
@@ -218,11 +222,14 @@ class Reaction(db.Model):
 class Bookmark(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    opportunity_id = db.Column(db.Integer, db.ForeignKey('opportunity.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    opportunity_id = db.Column(db.Integer, db.ForeignKey(
+        'opportunity.id'), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=datetime.utcnow, nullable=False)
 
     user = db.relationship('User', backref=db.backref('bookmarks', lazy=True))
-    opportunity = db.relationship('Opportunity', backref=db.backref('bookmarks', lazy=True))
+    opportunity = db.relationship(
+        'Opportunity', backref=db.backref('bookmarks', lazy=True))
 
     def to_dict(self):
         return {

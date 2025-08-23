@@ -43,6 +43,7 @@
 		"vitest-browser-svelte": "^0.1.0"
 	},
 	"dependencies": {
+		"lucide-svelte": "^0.323.0",
 		"socket.io-client": "^4.8.1"
 	}
 }

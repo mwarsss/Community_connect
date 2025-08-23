@@ -1,11 +1,11 @@
-<script>
+<script lang="ts">
     import { post } from "$lib/api";
     import { goto } from "$app/navigation";
 
     let username = "";
     let email = "";
     let password = "";
-    let error = null;
+    let error: string | null = null;
 
     async function register() {
         const res = await post("register", { username, email, password });

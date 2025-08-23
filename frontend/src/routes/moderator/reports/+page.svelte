@@ -1,15 +1,33 @@
-<script>
+<script lang="ts">
     import { get, post } from "$lib/api";
     import { onMount } from "svelte";
 
-    let reports = [];
-
-    async function loadReports() {
-        reports = await get("moderator/reports");
+    interface ReportedUser {
+        username: string;
     }
 
-    async function markReviewed(id) {
-        await post(`moderator/mark_reviewed/${id}`);
+    interface ReportedOpportunity {
+        title: string;
+    }
+
+    interface Report {
+        id: number;
+        reason: string;
+        reporter_username: string;
+        is_reviewed: boolean;
+        reported_user?: ReportedUser;
+        reported_opportunity?: ReportedOpportunity;
+    }
+
+    let reports: Report[] = [];
+
+    async function loadReports() {
+        const res = await get("moderator/reports");
+        reports = res.reports;
+    }
+
+    async function markReviewed(id: number) {
+        await post(`moderator/mark_reviewed/${id}`, {});
         loadReports();
     }
 

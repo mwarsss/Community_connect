@@ -1,11 +1,11 @@
-<script>
+<script lang="ts">
     import { user } from "$lib/stores";
     import { post } from "$lib/api";
     import { goto } from "$app/navigation";
     import "../app.css";
 
     async function logout() {
-        await post("logout");
+        await post("logout", {});
         user.set(null);
         goto("/login");
     }
