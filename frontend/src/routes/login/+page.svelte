@@ -1,16 +1,18 @@
-<script>
+<script lang="ts">
     import { post } from "$lib/api";
     import { goto } from "$app/navigation";
+    import { user } from "$lib/stores";
 
     let username = "";
     let password = "";
-    let error = null;
+    let error: string | null = null;
 
     async function login() {
         const res = await post("login", { username, password });
         if (res.error) {
             error = res.error;
         } else {
+            user.set(res.user);
             goto("/");
         }
     }

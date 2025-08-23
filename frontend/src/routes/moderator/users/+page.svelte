@@ -1,25 +1,35 @@
-<script>
+<script lang="ts">
     import { get, post } from "$lib/api";
     import { onMount } from "svelte";
 
-    let users = [];
+    interface User {
+        id: number;
+        username: string;
+        email: string;
+        role: string;
+        account_active: boolean;
+        is_banned: boolean;
+    }
+
+    let users: User[] = [];
 
     async function loadUsers() {
-        users = await get("admin/users");
+        const res = await get("admin/users");
+        users = res.users;
     }
 
-    async function suspendUser(id) {
-        await post(`admin/suspend/${id}`);
+    async function suspendUser(id: number) {
+        await post(`admin/suspend/${id}`, {});
         loadUsers();
     }
 
-    async function activateUser(id) {
-        await post(`admin/activate/${id}`);
+    async function activateUser(id: number) {
+        await post(`admin/activate/${id}`, {});
         loadUsers();
     }
 
-    async function banUser(id) {
-        await post(`moderator/ban_user/${id}`);
+    async function banUser(id: number) {
+        await post(`moderator/ban_user/${id}`, {});
         loadUsers();
     }
 

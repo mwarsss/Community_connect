@@ -1,20 +1,30 @@
-<script>
+<script lang="ts">
     import { get, post } from "$lib/api";
     import { onMount } from "svelte";
 
-    let opportunities = [];
-
-    async function loadOpportunities() {
-        opportunities = await get("moderator/opportunities");
+    interface Opportunity {
+        id: number;
+        title: string;
+        description: string;
+        category: string;
+        location: string;
+        username: string;
     }
 
-    async function approveOpportunity(id) {
-        await post(`moderator/approve/${id}`);
+    let opportunities: Opportunity[] = [];
+
+    async function loadOpportunities() {
+        const res = await get("moderator/opportunities");
+        opportunities = res.opportunities;
+    }
+
+    async function approveOpportunity(id: number) {
+        await post(`moderator/approve/${id}`, {});
         loadOpportunities();
     }
 
-    async function rejectOpportunity(id) {
-        await post(`moderator/reject/${id}`);
+    async function rejectOpportunity(id: number) {
+        await post(`moderator/reject/${id}`, {});
         loadOpportunities();
     }
 

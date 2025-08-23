@@ -1,20 +1,39 @@
-<script>
+<script lang="ts">
     import { get, post } from "$lib/api";
     import socket from "$lib/socket";
     import { onMount } from "svelte";
     import { user } from "$lib/stores";
 
-    let opportunities = [];
-    let pagination = {};
-    let page = 1;
-    let selectedCategory = "";
-    let location = "";
-    let tags = "";
-    let status = "";
+    interface Reaction {
+        [key: string]: string;
+    }
 
-    const CATEGORIES = ["Education", "Climate", "Health", "Youth", "Technology", "Mental Health"];
+    interface Opportunity {
+        id: number;
+        title: string;
+        description: string;
+        category: string;
+        location: string;
+        username: string;
+        reactions: Reaction;
+        bookmarks: number[];
+    }
 
-    async function loadOpportunities(page = 1, category = "", loc = "", inputTags = "", stat = "") {
+    interface Pagination {
+        total_pages?: number;
+    }
+
+    let opportunities: Opportunity[] = [];
+    let pagination: Pagination = {};
+    let page: number = 1;
+    let selectedCategory: string = "";
+    let location: string = "";
+    let tags: string = "";
+    let status: string = "";
+
+    const CATEGORIES: string[] = ["Education", "Climate", "Health", "Youth", "Technology", "Mental Health"];
+
+    async function loadOpportunities(page: number = 1, category: string = "", loc: string = "", inputTags: string = "", stat: string = "") {
         let url = `/?page=${page}`;
         if (category) url += `&category=${category}`;
         if (loc) url += `&location=${loc}`;
@@ -27,29 +46,29 @@
 
     onMount(() => loadOpportunities(page, selectedCategory, location, tags, status));
 
-    function changePage(newPage) {
-        if (newPage > 0 && newPage <= pagination.total_pages) {
+    function changePage(newPage: number) {
+        if (newPage > 0 && newPage <= (pagination.total_pages || 1)) {
             page = newPage;
             loadOpportunities(page, selectedCategory, location, tags, status);
         }
     }
 
-    function filterByCategory(category) {
+    function filterByCategory(category: string) {
         page = 1;
         selectedCategory = category;
         loadOpportunities(page, selectedCategory, location, tags, status);
     }
 
-    async function react(opportunityId, reactionType) {
+    async function react(opportunityId: number, reactionType: string) {
         await post(`opportunity/${opportunityId}/react`, { reaction_type: reactionType });
     }
 
-    async function bookmark(opportunityId) {
-        await post(`opportunity/${opportunityId}/bookmark`);
+    async function bookmark(opportunityId: number) {
+        await post(`opportunity/${opportunityId}/bookmark`, {});
     }
 
     onMount(() => {
-        socket.on('reaction_update', ({ opportunity_id, reactions }) => {
+        socket.on('reaction_update', ({ opportunity_id, reactions }: { opportunity_id: number, reactions: Reaction }) => {
             opportunities = opportunities.map(opp => {
                 if (opp.id === opportunity_id) {
                     return { ...opp, reactions };
@@ -58,7 +77,7 @@
             });
         });
 
-        socket.on('bookmark_update', ({ opportunity_id, bookmarks }) => {
+        socket.on('bookmark_update', ({ opportunity_id, bookmarks }: { opportunity_id: number, bookmarks: number[] }) => {
             opportunities = opportunities.map(opp => {
                 if (opp.id === opportunity_id) {
                     return { ...opp, bookmarks };
@@ -107,7 +126,9 @@
                     <button on:click={() => react(opportunity.id, 'love')} class="px-2 py-1 rounded-md bg-gray-200 hover:bg-gray-300">❤️ {Object.values(opportunity.reactions).filter(r => r === 'love').length}</button>
                     <button on:click={() => react(opportunity.id, 'wow')} class="px-2 py-1 rounded-md bg-gray-200 hover:bg-gray-300">😮 {Object.values(opportunity.reactions).filter(r => r === 'wow').length}</button>
                 </div>
+                {#if $user}
                 <button on:click={() => bookmark(opportunity.id)} class="px-2 py-1 rounded-md bg-gray-200 hover:bg-gray-300">{opportunity.bookmarks.includes($user.id) ? '❤️' : '🤍'}</button>
+                {/if}
             </div>
         </div>
     {/each}
@@ -116,9 +137,9 @@
 <div class="flex justify-center mt-8">
     <nav class="flex space-x-2">
         <button on:click={() => changePage(page - 1)} disabled={page === 1} class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50">Previous</button>
-        {#each Array(pagination.total_pages) as _, i}
+        {#each Array(pagination.total_pages || 0) as _, i}
             <button on:click={() => changePage(i + 1)} class="px-4 py-2 rounded-md {page === i + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}">{i + 1}</button>
         {/each}
-        <button on:click={() => changePage(page + 1)} disabled={page === pagination.total_pages} class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50">Next</button>
+        <button on:click={() => changePage(page + 1)} disabled={page === (pagination.total_pages || 1)} class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50">Next</button>
     </nav>
 </div>
