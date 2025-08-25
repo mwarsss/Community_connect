@@ -29,15 +29,6 @@ class User(db.Model, UserMixin):
     # Nullable as it's only set when suspended
     suspended_at = db.Column(db.DateTime, nullable=True)
     is_banned = db.Column(db.Boolean, default=False, nullable=False)
-    # Define a custom __init__ method for initial object creation
-    # password_hash will be set by set_password method later.
-    # account_active and suspended_at have defaults in Column definition.
-
-    def __init__(self, username, email, role='user'):
-        self.username = username
-        self.email = email
-        self.role = role
-
     # Method to set the user's password hash
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -124,16 +115,20 @@ class Opportunity(db.Model):
     description = db.Column(db.Text, nullable=False)
     category = db.Column(db.String(50), nullable=False)
     location = db.Column(db.String(100), nullable=False)
-    tags = db.Column(db.String(255), nullable=True)  # Add tags field
     is_approved = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(
         db.DateTime, default=datetime.utcnow, nullable=False)
-    approved_by = db.Column(db.String(120), nullable=True)
+    approved_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     # Relationship to User
     user = db.relationship(
-        'User', backref=db.backref('opportunities', lazy=True))
+        'User', backref=db.backref('opportunities', lazy=True), foreign_keys=[user_id])
+    
+    approved_by = db.relationship('User', foreign_keys=[approved_by_id])
+
+    tags = db.relationship('Tag', secondary='opportunity_tags', lazy='subquery',
+        backref=db.backref('opportunities', lazy=True))
 
     def to_dict(self):
         return {
@@ -142,10 +137,10 @@ class Opportunity(db.Model):
             'description': self.description,
             'category': self.category,
             'location': self.location,
-            'tags': self.tags.split(',') if self.tags else [],
+            'tags': [tag.name for tag in self.tags],
             'is_approved': self.is_approved,
             'created_at': self.created_at.isoformat(),
-            'approved_by': self.approved_by,
+            'approved_by': self.approved_by.username if self.approved_by else None,
             'user_id': self.user_id,
             'username': self.user.username,
             'reactions': [reaction.to_dict() for reaction in self.reactions],
@@ -241,6 +236,19 @@ class Bookmark(db.Model):
 
     def __repr__(self):
         return f"<Bookmark by {self.user.username} on {self.opportunity.title}>"
+
+
+opportunity_tags = db.Table('opportunity_tags',
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True),
+    db.Column('opportunity_id', db.Integer, db.ForeignKey('opportunity.id'), primary_key=True)
+)
+
+class Tag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<Tag {self.name}>"
 
 
 # User loader for Flask-Login
