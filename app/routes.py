@@ -2,7 +2,7 @@ from flask import jsonify, request, Blueprint, current_app
 from flask_login import login_user, logout_user, current_user, login_required
 from app.decorators import moderator_required
 from app import db
-from app.models import User, Opportunity, Report, PasswordResetToken
+from app.models import User, Opportunity, Report, PasswordResetToken, Tag
 from app.utils import role_required
 from app import socketio
 from flask_socketio import emit
@@ -11,6 +11,15 @@ CATEGORIES = ["Education", "Climate", "Health", "Youth", "Technology", "Mental H
 
 main = Blueprint("main", __name__)
 moderator_bp = Blueprint('moderator', __name__, url_prefix='/moderator')
+
+@main.route("/categories")
+def get_categories():
+    return jsonify(CATEGORIES)
+
+@main.route("/tags")
+def get_tags():
+    tags = Tag.query.all()
+    return jsonify([tag.to_dict() for tag in tags])
 
 @main.route("/")
 def index():
@@ -39,7 +48,7 @@ def index():
 
     if tags:
         for tag in tags.split(','):
-            results_query = results_query.filter(Opportunity.tags.ilike(f"%{tag.strip()}%"))
+            results_query = results_query.filter(Opportunity.tags.any(Tag.name.ilike(f"%{tag.strip()}%")))
 
     if status == "approved":
         results_query = results_query.filter_by(is_approved=True)
@@ -70,6 +79,8 @@ def new_opportunity():
     location = data.get("location", "").strip()
     tags = data.get("tags", "").strip()
 
+    tags_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+    
     if not all([title, description, category, location]):
         return jsonify({"error": "All fields are required."}), 400
 
@@ -81,9 +92,15 @@ def new_opportunity():
         description=description,
         category=category,
         location=location,
-        tags=tags,  # Add tags to the new opportunity
         user_id=current_user.id
     )
+
+    for tag_name in tags_list:
+        tag = Tag.query.filter_by(name=tag_name).first()
+        if not tag:
+            tag = Tag(name=tag_name)
+            db.session.add(tag)
+        new_opp.tags.append(tag)
 
     if current_user.is_authenticated and current_user.role in ['admin', 'moderator']:
         new_opp.is_approved = True
