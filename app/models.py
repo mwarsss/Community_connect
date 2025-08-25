@@ -75,7 +75,7 @@ class User(db.Model, UserMixin):
 
 class PasswordResetToken(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     token = db.Column(db.String(100), unique=True, nullable=False)
     created_at = db.Column(
         db.DateTime, default=datetime.utcnow, nullable=False)
@@ -118,8 +118,8 @@ class Opportunity(db.Model):
     is_approved = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(
         db.DateTime, default=datetime.utcnow, nullable=False)
-    approved_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    approved_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
 
     # Relationship to User
     user = db.relationship(
@@ -155,11 +155,11 @@ class Opportunity(db.Model):
 class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     reporter_id = db.Column(
-        db.Integer, db.ForeignKey('user.id'), nullable=False)
+        db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     reported_user_id = db.Column(
-        db.Integer, db.ForeignKey('user.id'), nullable=True)
+        db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
     reported_opportunity_id = db.Column(
-        db.Integer, db.ForeignKey('opportunity.id'), nullable=True)
+        db.Integer, db.ForeignKey('opportunity.id'), nullable=True, index=True)
     reason = db.Column(db.String(255), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
     is_reviewed = db.Column(db.Boolean, default=False, nullable=False)
@@ -189,9 +189,9 @@ class Report(db.Model):
 
 class Reaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     opportunity_id = db.Column(db.Integer, db.ForeignKey(
-        'opportunity.id'), nullable=False)
+        'opportunity.id'), nullable=False, index=True)
     # e.g., 'like', 'love', 'wow'
     reaction_type = db.Column(db.String(20), nullable=False)
     created_at = db.Column(
@@ -216,9 +216,9 @@ class Reaction(db.Model):
 
 class Bookmark(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     opportunity_id = db.Column(db.Integer, db.ForeignKey(
-        'opportunity.id'), nullable=False)
+        'opportunity.id'), nullable=False, index=True)
     created_at = db.Column(
         db.DateTime, default=datetime.utcnow, nullable=False)
 
