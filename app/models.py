@@ -255,7 +255,6 @@ class Bookmark(db.Model):
     def __repr__(self):
         return f"<Bookmark by {self.user.username} on {self.opportunity.title}>"
 
-
 # User loader for Flask-Login
 @login.user_loader
 def load_user(user_id):
