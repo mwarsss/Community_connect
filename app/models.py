@@ -108,6 +108,24 @@ class PasswordResetToken(db.Model):
         return f"<PasswordResetToken {self.token[:8]}... for user {self.user_id}>"
 
 
+opportunity_tags = db.Table('opportunity_tags',
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True),
+    db.Column('opportunity_id', db.Integer, db.ForeignKey('opportunity.id'), primary_key=True)
+)
+
+class Tag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name
+        }
+
+    def __repr__(self):
+        return f"<Tag {self.name}>"
+
 # Define model for Opportunity
 class Opportunity(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -127,7 +145,7 @@ class Opportunity(db.Model):
     
     approved_by = db.relationship('User', foreign_keys=[approved_by_id])
 
-    tags = db.relationship('Tag', secondary='opportunity_tags', lazy='subquery',
+    tags = db.relationship('Tag', secondary=opportunity_tags, lazy='subquery',
         backref=db.backref('opportunities', lazy=True))
 
     def to_dict(self):
@@ -137,7 +155,7 @@ class Opportunity(db.Model):
             'description': self.description,
             'category': self.category,
             'location': self.location,
-            'tags': [tag.name for tag in self.tags],
+            'tags': [tag.to_dict() for tag in self.tags],
             'is_approved': self.is_approved,
             'created_at': self.created_at.isoformat(),
             'approved_by': self.approved_by.username if self.approved_by else None,
@@ -236,19 +254,6 @@ class Bookmark(db.Model):
 
     def __repr__(self):
         return f"<Bookmark by {self.user.username} on {self.opportunity.title}>"
-
-
-opportunity_tags = db.Table('opportunity_tags',
-    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True),
-    db.Column('opportunity_id', db.Integer, db.ForeignKey('opportunity.id'), primary_key=True)
-)
-
-class Tag(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)
-
-    def __repr__(self):
-        return f"<Tag {self.name}>"
 
 
 # User loader for Flask-Login

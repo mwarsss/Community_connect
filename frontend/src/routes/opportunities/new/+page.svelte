@@ -1,7 +1,8 @@
 <script lang="ts">
-    import { post } from "$lib/api";
+    import { post, get } from "$lib/api";
     import { goto } from "$app/navigation";
     import { Briefcase, MapPin, Tag, FileText, LayoutGrid } from "lucide-svelte";
+    import { onMount } from "svelte";
 
     let title: string = "";
     let description: string = "";
@@ -10,8 +11,26 @@
     let selectedTags: string[] = [];
     let error: string | null = null;
     let loading: boolean = false;
+    let availableTags: {id: number, name: string}[] = [];
+    let availableCategories: string[] = [];
+    let isLoading: boolean = true;
 
-    const availableTags: string[] = ["Social", "Environment", "Health", "Education", "Animals"];
+    onMount(async () => {
+        const tagsRes = await get("tags");
+        if (tagsRes.error) {
+            error = tagsRes.error;
+        } else {
+            availableTags = tagsRes;
+        }
+
+        const categoriesRes = await get("categories");
+        if (categoriesRes.error) {
+            error = categoriesRes.error;
+        } else {
+            availableCategories = categoriesRes;
+        }
+        isLoading = false;
+    });
 
     async function createOpportunity() {
         loading = true;
@@ -80,7 +99,12 @@
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                 <LayoutGrid class="h-5 w-5 text-gray-400" />
                             </div>
-                            <input id="category" type="text" bind:value={category} placeholder="e.g., Environmental" class="form-input block w-full pl-10 sm:text-sm sm:leading-5 rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" />
+                            <select id="category" bind:value={category} class="form-select block w-full pl-10 sm:text-sm sm:leading-5 rounded-md border-gray-300 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="" disabled>Select a category</option>
+                                {#each availableCategories as cat}
+                                    <option value={cat}>{cat}</option>
+                                {/each}
+                            </select>
                         </div>
                     </div>
                     <div>
@@ -97,11 +121,15 @@
                 <div>
                     <label id="tags-label" class="block text-sm font-medium text-gray-700">Tags</label>
                     <div class="mt-2 flex flex-wrap gap-2" role="group" aria-labelledby="tags-label">
-                        {#each availableTags as tag}
-                            <button type="button" on:click={() => toggleTag(tag)} class="px-4 py-2 rounded-full text-sm font-medium transition-colors {selectedTags.includes(tag) ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
-                                {tag}
-                            </button>
-                        {/each}
+                        {#if isLoading}
+                            <p>Loading tags...</p>
+                        {:else}
+                            {#each availableTags as tag}
+                                <button type="button" on:click={() => toggleTag(tag.name)} class="px-4 py-2 rounded-full text-sm font-medium transition-colors {selectedTags.includes(tag.name) ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">
+                                    {tag.name}
+                                </button>
+                            {/each}
+                        {/if}
                     </div>
                 </div>
 
