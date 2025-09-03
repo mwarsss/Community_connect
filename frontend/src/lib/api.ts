@@ -7,7 +7,7 @@ type Options = {
 }
 
 async function send<T>(method: string, path: string, data?: T) {
-    const opts: Options = { method, headers: {} };
+    const opts: Options = { method, headers: {}, credentials: 'include' };
 
     if (data) {
         opts.headers['Content-Type'] = 'application/json';

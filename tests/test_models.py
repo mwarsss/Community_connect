@@ -20,7 +20,7 @@ class TestUser:
             assert user.username == 'testuser'
             assert user.email == 'test@example.com'
             assert user.role == 'user'  # default role
-            assert user.is_active is True
+            assert user.account_active is True
             assert user.is_banned is False
 
     def test_user_password_hashing(self, app):
@@ -46,12 +46,12 @@ class TestUser:
 
             # Test suspension
             user.suspend()
-            assert user.is_active is False
+            assert user.account_active is False
             assert user.suspended_at is not None
 
             # Test activation
             user.activate()
-            assert user.is_active is True
+            assert user.account_active is True
             assert user.suspended_at is None
 
     def test_user_role_promotion(self, app):
@@ -74,6 +74,9 @@ class TestUser:
         """Test user string representation."""
         with app.app_context():
             user = User(username='testuser', email='test@example.com')
+            user.set_password('password123')
+            db.session.add(user)
+            db.session.commit()
             repr_str = repr(user)
             assert 'User testuser' in repr_str
             assert 'Role: user' in repr_str
@@ -92,6 +95,8 @@ class TestOpportunity:
                 location='Test City',
                 user_id=test_user.id
             )
+            db.session.add(opportunity)
+            db.session.commit()
 
             assert opportunity.title == 'Test Opportunity'
             assert opportunity.description == 'This is a test opportunity'
@@ -128,6 +133,9 @@ class TestOpportunity:
                 location='Test City',
                 user_id=test_user.id
             )
+            db.session.add(test_user)
+            db.session.add(opportunity)
+            db.session.commit()
             repr_str = repr(opportunity)
             assert 'Opportunity Test Opportunity' in repr_str
 
@@ -143,6 +151,8 @@ class TestReport:
                 reported_user_id=test_user.id,
                 reason='Test report for user'
             )
+            db.session.add(report)
+            db.session.commit()
 
             assert report.reporter_id == test_user.id
             assert report.reported_user_id == test_user.id
@@ -189,6 +199,9 @@ class TestReport:
                 reporter_id=test_user.id,
                 reason='Test report'
             )
+            db.session.add(test_user)
+            db.session.add(report)
+            db.session.commit()
             repr_str = repr(report)
             assert 'Report' in repr_str
             assert str(test_user.id) in repr_str

@@ -7,21 +7,15 @@ from app.models import User, Opportunity, Report
 class TestAuthentication:
     """Test authentication routes."""
 
-    def test_register_page(self, client):
-        """Test registration page loads."""
-        response = client.get('/register')
-        assert response.status_code == 200
-        assert b'Register' in response.data
-
     def test_register_success(self, client, app):
         """Test successful user registration."""
-        response = client.post('/register', data={
+        response = client.post('/register', json={
             'username': 'newuser',
             'email': 'newuser@example.com',
             'password': 'password123'
-        }, follow_redirects=True)
+        })
 
-        assert response.status_code == 200
+        assert response.status_code == 201
 
         with app.app_context():
             user = User.query.filter_by(username='newuser').first()
@@ -31,64 +25,58 @@ class TestAuthentication:
 
     def test_register_duplicate_username(self, client, test_user):
         """Test registration with duplicate username."""
-        response = client.post('/register', data={
+        response = client.post('/register', json={
             'username': 'testuser',  # same as test_user
             'email': 'different@example.com',
             'password': 'password123'
         })
 
-        assert response.status_code == 200
-        assert b'Username is already taken' in response.data
+        assert response.status_code == 400
+        assert response.json['error'] == 'Username is already taken.'
 
     def test_register_duplicate_email(self, client, test_user):
         """Test registration with duplicate email."""
-        response = client.post('/register', data={
+        response = client.post('/register', json={
             'username': 'differentuser',
             'email': 'test@example.com',  # same as test_user
             'password': 'password123'
         })
 
-        assert response.status_code == 200
-        assert b'Email is already registered' in response.data
-
-    def test_login_page(self, client):
-        """Test login page loads."""
-        response = client.get('/login')
-        assert response.status_code == 200
-        assert b'Login' in response.data
+        assert response.status_code == 400
+        assert response.json['error'] == 'Email is already registered.'
 
     def test_login_success(self, client, test_user):
         """Test successful login."""
-        response = client.post('/login', data={
+        response = client.post('/login', json={
             'username': 'testuser',
             'password': 'password123'
-        }, follow_redirects=True)
+        })
 
         assert response.status_code == 200
-        assert b'Login successful' in response.data
+        assert response.json['username'] == 'testuser'
 
     def test_login_invalid_credentials(self, client):
         """Test login with invalid credentials."""
-        response = client.post('/login', data={
+        response = client.post('/login', json={
             'username': 'nonexistent',
             'password': 'wrongpassword'
         })
 
-        assert response.status_code == 200
-        assert b'Invalid username or password' in response.data
+        assert response.status_code == 401
+        assert response.json['error'] == 'Invalid username or password.'
 
     def test_logout(self, client, test_user):
         """Test logout functionality."""
         # First login
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'testuser',
             'password': 'password123'
         })
 
         # Then logout
-        response = client.get('/logout', follow_redirects=True)
+        response = client.post('/logout')
         assert response.status_code == 200
-        assert b'You have been logged out' in response.data
+        assert response.json['message'] == 'You have been logged out.'
 
 
 class TestOpportunityRoutes:
@@ -98,71 +86,67 @@ class TestOpportunityRoutes:
         """Test home page loads."""
         response = client.get('/')
         assert response.status_code == 200
-        assert b'Community Connect' in response.data
-
-    def test_new_opportunity_page_requires_login(self, client):
-        """Test that new opportunity page requires login."""
-        response = client.get('/new', follow_redirects=True)
-        assert response.status_code == 200
-        # Should redirect to login page
+        assert 'opportunities' in response.json
+        assert 'pagination' in response.json
 
     def test_new_opportunity_with_login(self, client, test_user):
         """Test creating new opportunity when logged in."""
         # Login first
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'testuser',
             'password': 'password123'
         })
 
-        response = client.post('/new', data={
+        response = client.post('/new', json={
             'title': 'Test Opportunity',
             'description': 'This is a test opportunity',
             'category': 'Education',
             'location': 'Test City'
-        }, follow_redirects=True)
+        })
 
-        assert response.status_code == 200
-        assert b'Opportunity submitted for approval' in response.data
+        assert response.status_code == 201
+        assert response.json['title'] == 'Test Opportunity'
 
     def test_new_opportunity_missing_fields(self, client, test_user):
         """Test creating opportunity with missing fields."""
         # Login first
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'testuser',
             'password': 'password123'
         })
 
-        response = client.post('/new', data={
+        response = client.post('/new', json={
             'title': 'Test Opportunity',
             # Missing description, category, location
         })
 
-        assert response.status_code == 200
-        assert b'All fields are required' in response.data
+        assert response.status_code == 400
+        assert response.json['error'] == 'All fields are required.'
 
     def test_view_opportunity(self, client, test_opportunity):
         """Test viewing a specific opportunity."""
         response = client.get(f'/opportunity/{test_opportunity.id}')
         assert response.status_code == 200
-        assert b'Test Opportunity' in response.data
+        assert response.json['title'] == 'Test Opportunity'
 
     def test_dashboard_requires_login(self, client):
         """Test that dashboard requires login."""
-        response = client.get('/dashboard', follow_redirects=True)
-        assert response.status_code == 200
-        # Should redirect to login page
+        response = client.get('/dashboard')
+        assert response.status_code == 401
+        assert response.json['message'] == 'Authentication is required to access this resource.'
 
     def test_dashboard_with_login(self, client, test_user, test_opportunity):
         """Test dashboard when logged in."""
         # Login first
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'testuser',
             'password': 'password123'
         })
 
         response = client.get('/dashboard')
         assert response.status_code == 200
-        assert b'Test Opportunity' in response.data
+        assert len(response.json) > 0
+        assert response.json[0]['title'] == 'Test Opportunity'
 
 
 class TestModerationRoutes:
@@ -171,7 +155,7 @@ class TestModerationRoutes:
     def test_moderate_opportunities_requires_moderator(self, client, test_user):
         """Test that moderation requires moderator role."""
         # Login as regular user
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'testuser',
             'password': 'password123'
         })
@@ -182,13 +166,14 @@ class TestModerationRoutes:
     def test_moderate_opportunities_as_moderator(self, client, test_moderator):
         """Test moderation page as moderator."""
         # Login as moderator
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'moderator',
             'password': 'moderator123'
         })
 
         response = client.get('/moderator/opportunities')
         assert response.status_code == 200
+        assert isinstance(response.json, list)
 
     def test_approve_opportunity(self, client, test_moderator, test_user, app):
         """Test approving an opportunity."""
@@ -207,15 +192,16 @@ class TestModerationRoutes:
             db.session.commit()
 
             # Login as moderator
-            client.post('/login', data={
+            client.post('/login', json={
                 'username': 'moderator',
                 'password': 'moderator123'
             })
 
             response = client.post(f'/moderator/approve/{opportunity.id}')
-            assert response.status_code == 302  # Redirect
+            assert response.status_code == 200
+            assert response.json['is_approved'] is True
 
-            opportunity = Opportunity.query.get(opportunity.id)
+            opportunity = db.session.get(Opportunity, opportunity.id)
             assert opportunity.is_approved is True
 
     def test_reject_opportunity(self, client, test_moderator, app):
@@ -235,16 +221,17 @@ class TestModerationRoutes:
             opp_id = opportunity.id
 
         # Login as moderator
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'moderator',
             'password': 'moderator123'
         })
 
         response = client.post(f'/moderator/reject/{opp_id}')
-        assert response.status_code == 302  # Redirect
+        assert response.status_code == 200
+        assert response.json['message'] == 'Opportunity rejected.'
 
         with app.app_context():
-            opportunity = Opportunity.query.get(opp_id)
+            opportunity = db.session.get(Opportunity, opp_id)
             assert opportunity is None  # Should be deleted
 
 
@@ -262,7 +249,7 @@ class TestAPIEndpoints:
     def test_submit_report_success(self, client, test_user, test_opportunity):
         """Test successful report submission."""
         # Login first
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'testuser',
             'password': 'password123'
         })
@@ -273,12 +260,12 @@ class TestAPIEndpoints:
         })
 
         assert response.status_code == 201
-        assert b'Report submitted' in response.data
+        assert response.json['message'] == 'Report submitted'
 
     def test_view_reports_requires_moderator(self, client, test_user):
         """Test that viewing reports requires moderator role."""
         # Login as regular user
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'testuser',
             'password': 'password123'
         })
@@ -289,7 +276,7 @@ class TestAPIEndpoints:
     def test_view_reports_as_moderator(self, client, test_moderator, test_report):
         """Test viewing reports as moderator."""
         # Login as moderator
-        client.post('/login', data={
+        client.post('/login', json={
             'username': 'moderator',
             'password': 'moderator123'
         })

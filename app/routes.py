@@ -104,7 +104,7 @@ def new_opportunity():
 
     if current_user.is_authenticated and current_user.role in ['admin', 'moderator']:
         new_opp.is_approved = True
-        new_opp.approved_by = current_user.username
+        new_opp.approved_by = current_user
     else:
         new_opp.is_approved = False
 
@@ -178,7 +178,7 @@ def moderate_opportunities():
 def approve_opportunity(id):
     opp = Opportunity.query.get_or_404(id)
     opp.is_approved = True
-    opp.approved_by = current_user.username
+    opp.approved_by = current_user
     db.session.commit()
     return jsonify(opp.to_dict())
 
@@ -293,8 +293,8 @@ def submit_report():
     if reported_user_id and reported_opportunity_id:
         return jsonify({"error": "Report must be for a user OR an opportunity, not both."}), 400
 
-    reported_user = User.query.get(reported_user_id) if reported_user_id else None
-    reported_opportunity = Opportunity.query.get(reported_opportunity_id) if reported_opportunity_id else None
+    reported_user = db.session.get(User, reported_user_id) if reported_user_id else None
+    reported_opportunity = db.session.get(Opportunity, reported_opportunity_id) if reported_opportunity_id else None
 
     if (reported_user_id and not reported_user) or (reported_opportunity_id and not reported_opportunity):
         return jsonify({"error": "Reported user or opportunity not found."}), 404

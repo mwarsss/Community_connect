@@ -4,7 +4,7 @@ from app import db  # Correct way to import the SQLAlchemy instance
 # Import LoginManager to decorate load_user
 from flask_login import UserMixin, LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta  # Import datetime for timestamps
+from datetime import datetime, timedelta, UTC  # Import datetime for timestamps
 import secrets
 import string
 
@@ -41,7 +41,7 @@ class User(db.Model, UserMixin):
     def suspend(self):
         self.account_active = False
         # Use parentheses here as it's a function call
-        self.suspended_at = datetime.utcnow()
+        self.suspended_at = datetime.now(UTC)
 
     # Method to reactivate a user account
     def activate(self):
@@ -78,7 +78,7 @@ class PasswordResetToken(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     token = db.Column(db.String(100), unique=True, nullable=False)
     created_at = db.Column(
-        db.DateTime, default=datetime.utcnow, nullable=False)
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False, nullable=False)
 
@@ -89,7 +89,7 @@ class PasswordResetToken(db.Model):
     def __init__(self, user_id, expires_in_hours=24):
         self.user_id = user_id
         self.token = self._generate_token()
-        self.expires_at = datetime.utcnow() + timedelta(hours=expires_in_hours)
+        self.expires_at = datetime.now(UTC) + timedelta(hours=expires_in_hours)
 
     def _generate_token(self):
         """Generate a secure random token"""
@@ -98,7 +98,7 @@ class PasswordResetToken(db.Model):
 
     def is_valid(self):
         """Check if the token is still valid (not expired and not used)"""
-        return not self.used and datetime.utcnow() < self.expires_at
+        return not self.used and datetime.now(UTC) < self.expires_at
 
     def mark_as_used(self):
         """Mark the token as used"""
@@ -135,7 +135,7 @@ class Opportunity(db.Model):
     location = db.Column(db.String(100), nullable=False)
     is_approved = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(
-        db.DateTime, default=datetime.utcnow, nullable=False)
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
     approved_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
 
@@ -179,7 +179,7 @@ class Report(db.Model):
     reported_opportunity_id = db.Column(
         db.Integer, db.ForeignKey('opportunity.id'), nullable=True, index=True)
     reason = db.Column(db.String(255), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=True)
     is_reviewed = db.Column(db.Boolean, default=False, nullable=False)
 
     # Relationships
@@ -213,7 +213,7 @@ class Reaction(db.Model):
     # e.g., 'like', 'love', 'wow'
     reaction_type = db.Column(db.String(20), nullable=False)
     created_at = db.Column(
-        db.DateTime, default=datetime.utcnow, nullable=False)
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
     user = db.relationship('User', backref=db.backref('reactions', lazy=True))
     opportunity = db.relationship(
@@ -238,7 +238,7 @@ class Bookmark(db.Model):
     opportunity_id = db.Column(db.Integer, db.ForeignKey(
         'opportunity.id'), nullable=False, index=True)
     created_at = db.Column(
-        db.DateTime, default=datetime.utcnow, nullable=False)
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
     user = db.relationship('User', backref=db.backref('bookmarks', lazy=True))
     opportunity = db.relationship(
@@ -259,4 +259,4 @@ class Bookmark(db.Model):
 # User loader for Flask-Login
 @login.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
