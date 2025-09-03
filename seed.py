@@ -25,7 +25,7 @@ with app.app_context():
         location='City Park',
         user_id=user1.id,
         is_approved=True,
-        approved_by='mod_user'
+        approved_by=moderator
     )
 
     opp2 = Opportunity(
@@ -35,7 +35,7 @@ with app.app_context():
         location='Community Center',
         user_id=user2.id,
         is_approved=True,
-        approved_by='mod_user'
+        approved_by=moderator
     )
 
     opp3 = Opportunity(

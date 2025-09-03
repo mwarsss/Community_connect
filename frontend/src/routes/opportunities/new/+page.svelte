@@ -119,7 +119,7 @@
                 </div>
 
                 <div>
-                    <label id="tags-label" class="block text-sm font-medium text-gray-700">Tags</label>
+                    <span id="tags-label" class="block text-sm font-medium text-gray-700">Tags</span>
                     <div class="mt-2 flex flex-wrap gap-2" role="group" aria-labelledby="tags-label">
                         {#if isLoading}
                             <p>Loading tags...</p>
