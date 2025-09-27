@@ -133,6 +133,8 @@ class Opportunity(db.Model):
     description = db.Column(db.Text, nullable=False)
     category = db.Column(db.String(50), nullable=False)
     location = db.Column(db.String(100), nullable=False)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     is_approved = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(
         db.DateTime, default=datetime.utcnow, nullable=False)
@@ -155,6 +157,8 @@ class Opportunity(db.Model):
             'description': self.description,
             'category': self.category,
             'location': self.location,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
             'tags': [tag.to_dict() for tag in self.tags],
             'is_approved': self.is_approved,
             'created_at': self.created_at.isoformat(),
